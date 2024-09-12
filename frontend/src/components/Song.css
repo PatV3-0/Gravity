@@ -1,0 +1,17 @@
+.song {
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin: 16px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.song-title {
+  font-size: 1.5em;
+  margin-bottom: 8px;
+}
+
+.song-artist, .song-album, .song-genre, .song-release-year, .song-duration {
+  font-size: 1em;
+  margin: 4px 0;
+}

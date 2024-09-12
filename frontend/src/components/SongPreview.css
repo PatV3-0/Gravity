@@ -1,0 +1,9 @@
+.song-preview {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.song-preview h4 {
+  margin: 0;
+}

@@ -1,0 +1,9 @@
+.profile-preview {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.profile-preview h4 {
+  margin: 0;
+}

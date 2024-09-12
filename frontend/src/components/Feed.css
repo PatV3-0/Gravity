@@ -1,0 +1,21 @@
+.feed {
+  padding: 20px;
+}
+
+.feed-section {
+  margin-bottom: 20px;
+}
+
+.playlist-previews,
+.song-previews {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.playlist-preview,
+.song-preview {
+  margin: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}

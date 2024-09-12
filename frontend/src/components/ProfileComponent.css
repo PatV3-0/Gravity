@@ -1,0 +1,16 @@
+.profile-component {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  max-width: 400px;
+  margin: 20px auto;
+}
+
+.profile-component h2 {
+  margin-top: 0;
+}
+
+.profile-component p {
+  margin: 8px 0;
+}

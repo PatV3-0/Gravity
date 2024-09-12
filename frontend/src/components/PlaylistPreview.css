@@ -1,0 +1,9 @@
+.playlist-preview {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.playlist-preview h3 {
+  margin: 0;
+}

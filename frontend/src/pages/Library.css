@@ -1,0 +1,12 @@
+.library-page {
+  padding: 20px;
+}
+
+.library-page h1 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.playlist-component {
+  margin-bottom: 20px;
+}

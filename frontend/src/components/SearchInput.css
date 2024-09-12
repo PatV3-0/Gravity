@@ -1,0 +1,14 @@
+.search-input {
+  margin-bottom: 20px;
+}
+
+.search-input input {
+  padding: 10px;
+  font-size: 16px;
+}
+
+.search-input button {
+  padding: 10px;
+  font-size: 16px;
+  margin-left: 10px;
+}
