@@ -1,6 +1,7 @@
 .playlist-preview {
+  width: 90%;
   padding: 10px;
-  border: 1px solid #ccc;
+  border: 1px solid black;
   border-radius: 5px;
 }
 

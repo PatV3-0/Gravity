@@ -1,23 +1,30 @@
 import React, { Component } from 'react';
+import UserPreview from './UserPreview'; 
 import './Followers.css';
 
 class FollowersFollowing extends Component {
   render() {
-    const { followers, following } = this.props;
+    const { friends } = this.props;
+
+    if (!friends || friends.length === 0) {
+      return <div>No friends to display</div>;
+    }
+
+    // Filter out friends that have errors
+    const validFriends = friends.filter(friend => !friend.message);
+
+    if (validFriends.length === 0) {
+      return <div>No valid friends to display due to server errors</div>;
+    }
+
     return (
       <div className="followers-following-component">
-        <h2>Followers</h2>
-        <ul>
-          {followers.map((user) => (
-            <li key={user.id}>{user.name}</li>
+        <h2>Friends</h2>
+        <div className="friends-list">
+          {validFriends.map((user) => (
+            <UserPreview key={user._id} user={user} />
           ))}
-        </ul>
-        <h2>Following</h2>
-        <ul>
-          {following.map((user) => (
-            <li key={user.id}>{user.name}</li>
-          ))}
-        </ul>
+        </div>
       </div>
     );
   }

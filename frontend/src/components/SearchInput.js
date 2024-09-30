@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import './SearchInput.css'; // Optional: for styling
+import './SearchInput.css';
 
 class SearchInput extends Component {
   constructor(props) {
@@ -15,6 +15,7 @@ class SearchInput extends Component {
 
   handleSubmit = (e) => {
     e.preventDefault();
+    console.log("Searching for:", this.state.query); 
     this.props.onSearch(this.state.query);
   };
 

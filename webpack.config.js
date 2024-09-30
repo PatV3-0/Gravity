@@ -6,7 +6,7 @@ module.exports = {
   entry: './frontend/src/index.js',
   output: {
     path: path.resolve(__dirname, 'frontend', 'public'),
-    filename: 'bundle.js'
+    filename: 'bundle.js',
   },
   module: {
     rules: [
@@ -30,6 +30,14 @@ module.exports = {
       template: './frontend/public/index.html',
     }),
   ],
+  devServer: {
+    static: {
+      directory: path.resolve(__dirname, 'frontend', 'public'),  // Serve static files
+    },
+    port: 3000,
+    hot: true,
+    open: true,
+  },
   resolve: {
     extensions: ['.js', '.jsx'],
   },

@@ -1,21 +1,37 @@
-.feed {
-  padding: 20px;
-}
-
 .feed-section {
-  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden; 
+  width: 100%; 
 }
 
-.playlist-previews,
-.song-previews {
+.carousel {
   display: flex;
-  flex-wrap: wrap;
+  transition: transform 0.5s ease;
 }
 
-.playlist-preview,
-.song-preview {
-  margin: 10px;
+.carousel-item {
+  box-sizing: border-box;
   padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  margin: 5px;
+}
+
+
+
+.playlist-carousel {
+  width: calc(100% / 3); 
+}
+
+.user-carousel {
+  width: calc(100% / 4); 
+}
+
+.song-carousel {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); 
+  gap: 10px; 
+  width: 100%; 
+}
+
+.song-row {
+  display: contents;
 }

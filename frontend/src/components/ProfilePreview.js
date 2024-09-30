@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import './ProfilePreview.css'; // Optional: for styling
+import './ProfilePreview.css';
 
 class ProfilePreview extends Component {
   render() {

@@ -6,10 +6,8 @@ class Profile extends Component {
     const { user } = this.props;
     return (
       <div className="profile-component">
-        <h2>{user.name}</h2>
-        <p>Email: {user.email}</p>
-        <p>Bio: {user.bio}</p>
-        {/* Add more profile information as needed */}
+        <h2>{user.name} {user.surname}</h2>
+        <p> &#64;{user.username}</p>
       </div>
     );
   }
