@@ -19,6 +19,7 @@ const ProfilePage = (props) => {
   const [error, setError] = useState(null);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false); // State to toggle the EditProfile component
+  const [isFriend, setIsFriend] = useState(false); // State to track friendship status
 
   const fetchData = (userId) => {
     fetch(`/api/users/${userId}`)
@@ -39,6 +40,13 @@ const ProfilePage = (props) => {
                 setFriends(friends);
                 setLoading(false);
                 setIsCurrentUser(userId === props.loggedInUserId);
+                
+                // Check if the current user is a friend of the profile user
+                if (currentUser && friendsList.includes(currentUser._id)) {
+                  setIsFriend(true);
+                } else {
+                  setIsFriend(false);
+                }
               })
               .catch(error => {
                 console.error('Error fetching all users:', error);
@@ -77,6 +85,24 @@ const ProfilePage = (props) => {
     navigate('/'); // Redirect to homepage
   };
 
+  const handleFriendToggle = () => {
+    const url = isFriend ? `/api/unfriend/${userId}` : `/api/friend/${userId}`;
+    
+    fetch(url, { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentUserId: currentUser._id }) // Pass the current logged-in user ID
+    })
+    .then(response => response.json())
+    .then(updatedUser => {
+      setCurrentUser(updatedUser); // Update the current user state
+      setIsFriend(!isFriend); // Toggle friend status
+    })
+    .catch(error => {
+      console.error(`Error ${isFriend ? 'unfriending' : 'friending'} user:`, error);
+    });
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -99,8 +125,17 @@ const ProfilePage = (props) => {
           )}
         </>
       )}
+
+      {!isCurrentUser && (
+        <>
+          <button onClick={handleFriendToggle}>
+            {isFriend ? 'Unfriend' : 'Add Friend'}
+          </button>
+        </>
+      )}
+
       <PlaylistsList playlists={playlists} />
-      <CreatePlaylist onCreate={handleCreatePlaylist} />
+      {isCurrentUser && <CreatePlaylist onCreate={handleCreatePlaylist} />}
       <FollowersFollowing friends={friends} />
     </div>
   );

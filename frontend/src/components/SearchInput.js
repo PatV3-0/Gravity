@@ -15,7 +15,7 @@ class SearchInput extends Component {
 
   handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Searching for:", this.state.query); 
+    //console.log("Searching for:", this.state.query); 
     this.props.onSearch(this.state.query);
   };
 

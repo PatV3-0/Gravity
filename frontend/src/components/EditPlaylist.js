@@ -62,7 +62,7 @@ const EditPlaylist = ({ playlist, onSave, onDelete }) => {
           console.log(data.message); // Log success message
           
           // Redirect to home page after deletion
-          navigate('/'); // Change '/' to your desired home route
+          navigate('/home'); // Change '/' to your desired home route
         } catch (error) {
           console.error('Error deleting playlist:', error);
         }

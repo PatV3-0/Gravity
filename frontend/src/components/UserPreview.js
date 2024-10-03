@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom'; 
 import './UserPreview.css';
-import fallbackImage from './user.png';
+import userImage from './user.png';
 
 const getGoogleDriveImage = (url) => {
   const match = url.match(/file\/d\/(.+?)\/view/);
@@ -22,15 +22,7 @@ const UserPreview = ({ user }) => {
 
   return (
     <div className="user-preview">
-      <img
-        src={getGoogleDriveImage(profileImage || fallbackImage)} 
-        alt={`${username}'s profile`} 
-        className="profile-image"
-        onError={(e) => {
-          e.target.onerror = null; 
-          e.target.src = fallbackImage;
-        }}
-      />
+      <img src={userImage} alt="User" />
       <div className="user-details">
         <h4>{username}</h4>
         <p>{name}</p>

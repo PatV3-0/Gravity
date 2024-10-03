@@ -7,6 +7,7 @@ import Playlist from './pages/Playlist';
 import Library from './pages/Library';
 import About from './pages/About';
 import SplashPage from './pages/SplashPage';
+import './index.css';
 import { useUser } from './UserContext'; // Import useUser
 
 const App = () => {
@@ -51,7 +52,10 @@ const App = () => {
               onLogout={handleLogout} 
             />} 
         />
-        <Route path="/playlists/:id" element={<Playlist />} />
+        <Route 
+          path="/playlists/:id" 
+          element={<Playlist currentUser={currentUser} />} 
+        />
         <Route path="/library" element={<Library />} />
         <Route path="/about" element={<About />} />
       </Routes>

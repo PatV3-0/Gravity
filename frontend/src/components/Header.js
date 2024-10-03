@@ -6,16 +6,26 @@ const Header = () => {
   const { currentUser } = useUser(); // Get current user from context
 
   return (
-    <header className="header">
-      <nav>
-        <ul className="nav-list">
-          <li><Link to="/home">Home</Link></li>
+    <header className="bg-blue-600 text-white p-4 shadow-md">
+      <nav className="max-w-6xl mx-auto">
+        <ul className="flex space-x-6">
+          <li>
+            <Link to="/home" className="hover:underline">Home</Link>
+          </li>
           {currentUser && (
-            <li><Link to={`/profile/${currentUser._id}`}>Profile</Link></li>
+            <li>
+              <Link to={`/profile/${currentUser._id}`} className="hover:underline">Profile</Link>
+            </li>
           )}
-          <li><Link to="/playlists">Playlist</Link></li>
-          <li><Link to="/library">Library</Link></li>
-          <li><Link to="/">Login</Link></li>
+          <li>
+            <Link to="/playlists" className="hover:underline">Playlist</Link>
+          </li>
+          <li>
+            <Link to="/library" className="hover:underline">Library</Link>
+          </li>
+          <li>
+            <Link to="/" className="hover:underline">Login</Link>
+          </li>
         </ul>
       </nav>
     </header>

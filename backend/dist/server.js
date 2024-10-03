@@ -28,17 +28,13 @@ var PlaylistSchema = new mongoose.Schema({
     type: Date,
     "default": Date.now
   },
-  // Ensure to include dateCreated
   createdBy: mongoose.Schema.Types.ObjectId,
   songs: [mongoose.Schema.Types.ObjectId],
-  comments: [{
-    user: mongoose.Schema.Types.ObjectId,
-    text: String,
-    date: {
-      type: Date,
-      "default": Date.now
-    }
-  }] // Define comments as an array of objects
+  comments: [mongoose.Schema.Types.ObjectId],
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
 });
 var UserSchema = new mongoose.Schema({
   username: String,
@@ -59,11 +55,29 @@ var SongSchema = new mongoose.Schema({
   duration: String,
   albumArt: String
 });
+var CommentSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  // Reference to the User model
+  playlist: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PlayList'
+  },
+  // Reference to the PlayList model
+  text: String,
+  date: {
+    type: Date,
+    "default": Date.now
+  }
+});
 
 // Create models
 var PlayList = mongoose.model('PlayList', PlaylistSchema, 'playlists');
 var User = mongoose.model('User', UserSchema, 'users');
 var Song = mongoose.model('Song', SongSchema, 'songs');
+var Comment = mongoose.model('Comment', CommentSchema, 'comments');
 
 // API routes
 app.get('/api/playlists', /*#__PURE__*/function () {
@@ -106,7 +120,7 @@ app.get('/api/playlists/:id', /*#__PURE__*/function () {
           _context2.prev = 0;
           id = req.params.id;
           _context2.next = 4;
-          return PlayList.findById(id).populate('songs');
+          return PlayList.findById(id).populate('songs').populate('comments');
         case 4:
           playlist = _context2.sent;
           if (playlist) {
@@ -117,7 +131,7 @@ app.get('/api/playlists/:id', /*#__PURE__*/function () {
             message: 'Playlist not found'
           }));
         case 7:
-          res.json(playlist);
+          res.json(playlist); // Send back the playlist
           _context2.next = 14;
           break;
         case 10:
@@ -252,37 +266,29 @@ app.post('/api/login', /*#__PURE__*/function () {
           });
         case 4:
           user = _context6.sent;
-          if (user) {
+          if (!(!user || user.password !== password)) {
             _context6.next = 7;
             break;
           }
-          return _context6.abrupt("return", res.status(401).send({
+          return _context6.abrupt("return", res.status(401).json({
             message: 'Invalid email or password'
           }));
         case 7:
-          if (!(user.password !== password)) {
-            _context6.next = 9;
-            break;
-          }
-          return _context6.abrupt("return", res.status(401).send({
-            message: 'Invalid email or password'
-          }));
-        case 9:
-          res.status(200).send(user); // Send back user data upon successful login
-          _context6.next = 16;
+          res.status(200).json(user);
+          _context6.next = 14;
           break;
-        case 12:
-          _context6.prev = 12;
+        case 10:
+          _context6.prev = 10;
           _context6.t0 = _context6["catch"](1);
           console.error('Error during login:', _context6.t0);
-          res.status(500).send({
+          res.status(500).json({
             message: 'Server error'
           });
-        case 16:
+        case 14:
         case "end":
           return _context6.stop();
       }
-    }, _callee6, null, [[1, 12]]);
+    }, _callee6, null, [[1, 10]]);
   }));
   return function (_x11, _x12) {
     return _ref6.apply(this, arguments);
@@ -306,11 +312,10 @@ app.post('/api/signup', /*#__PURE__*/function () {
             _context7.next = 7;
             break;
           }
-          return _context7.abrupt("return", res.status(400).send({
+          return _context7.abrupt("return", res.status(400).json({
             message: 'Email already in use'
           }));
         case 7:
-          // Create new user
           newUser = new User({
             username: username,
             name: fullName,
@@ -324,8 +329,7 @@ app.post('/api/signup', /*#__PURE__*/function () {
           _context7.next = 10;
           return newUser.save();
         case 10:
-          // Save user to the database
-          res.status(201).send({
+          res.status(201).json({
             message: 'User created successfully',
             user: newUser
           });
@@ -335,7 +339,7 @@ app.post('/api/signup', /*#__PURE__*/function () {
           _context7.prev = 13;
           _context7.t0 = _context7["catch"](1);
           console.error('Error creating user:', _context7.t0);
-          res.status(500).send({
+          res.status(500).json({
             message: 'Error creating user'
           });
         case 17:
@@ -354,56 +358,52 @@ app.put('/api/users/:userId', /*#__PURE__*/function () {
     return _regeneratorRuntime().wrap(function _callee8$(_context8) {
       while (1) switch (_context8.prev = _context8.next) {
         case 0:
+          console.log(req.params);
           userId = req.params.userId;
-          _req$body3 = req.body, username = _req$body3.username, profileImage = _req$body3.profileImage, password = _req$body3.password, oldPassword = _req$body3.oldPassword; // Include oldPassword in the request
-          _context8.prev = 2;
-          _context8.next = 5;
+          _req$body3 = req.body, username = _req$body3.username, profileImage = _req$body3.profileImage, password = _req$body3.password, oldPassword = _req$body3.oldPassword;
+          _context8.prev = 3;
+          _context8.next = 6;
           return User.findById(userId);
-        case 5:
+        case 6:
           user = _context8.sent;
           if (user) {
-            _context8.next = 8;
+            _context8.next = 9;
             break;
           }
           return _context8.abrupt("return", res.status(404).json({
             message: 'User not found'
           }));
-        case 8:
+        case 9:
           if (!(password && oldPassword !== user.password)) {
-            _context8.next = 10;
+            _context8.next = 11;
             break;
           }
           return _context8.abrupt("return", res.status(400).json({
             message: 'Old password is incorrect.'
           }));
-        case 10:
-          // Update user data
+        case 11:
           if (username) user.username = username;
           if (profileImage) user.profileImage = profileImage;
-          if (password) {
-            user.password = password; // Set new password (consider hashing this later)
-          }
-
-          // Save the updated user
-          _context8.next = 15;
+          if (password) user.password = password;
+          _context8.next = 16;
           return user.save();
-        case 15:
+        case 16:
           updatedUser = _context8.sent;
           res.json(updatedUser);
-          _context8.next = 23;
+          _context8.next = 24;
           break;
-        case 19:
-          _context8.prev = 19;
-          _context8.t0 = _context8["catch"](2);
+        case 20:
+          _context8.prev = 20;
+          _context8.t0 = _context8["catch"](3);
           console.error('Error updating user:', _context8.t0);
           res.status(500).json({
             message: 'Error updating user'
           });
-        case 23:
+        case 24:
         case "end":
           return _context8.stop();
       }
-    }, _callee8, null, [[2, 19]]);
+    }, _callee8, null, [[3, 20]]);
   }));
   return function (_x15, _x16) {
     return _ref8.apply(this, arguments);
@@ -421,17 +421,14 @@ app.post('/api/playlists', /*#__PURE__*/function () {
             name: playlistName,
             description: description,
             dateCreated: dateCreated || new Date(),
-            // Use provided date or current date
             createdBy: userId,
-            // Ensure you save the userId who created the playlist
             songs: [],
-            // Initialize with an empty array or handle it according to your logic
-            comments: [] // Initialize comments as an empty array
+            comments: []
           });
           _context9.next = 5;
           return newPlaylist.save();
         case 5:
-          res.status(201).json(newPlaylist); // Send the created playlist back to the client
+          res.status(201).json(newPlaylist);
           _context9.next = 12;
           break;
         case 8:
@@ -466,8 +463,7 @@ app.put('/api/playlists/:id', /*#__PURE__*/function () {
             description: description
           }, {
             "new": true
-          } // Return the updated document
-          );
+          });
         case 5:
           updatedPlaylist = _context10.sent;
           if (updatedPlaylist) {
@@ -518,9 +514,7 @@ app["delete"]('/api/playlists/:id', /*#__PURE__*/function () {
             message: 'Playlist not found'
           }));
         case 7:
-          // Assuming you have a way to get the user ID (either from the request or as part of the playlist)
-          userId = deletedPlaylist.userId; // Adjust this to your actual logic
-          // Remove playlist reference from the user
+          userId = deletedPlaylist.userId;
           _context11.next = 10;
           return User.findByIdAndUpdate(userId, {
             $pull: {
@@ -551,53 +545,413 @@ app["delete"]('/api/playlists/:id', /*#__PURE__*/function () {
   };
 }());
 app.post('/api/logout', function (req, res) {
-  // Implement your session or token invalidation logic here.
-  // For example, if using sessions, destroy the session:
-  // req.session.destroy(err => { ... });
-
-  // If using JWT, you can just inform the client to remove the token.
   res.status(200).json({
     message: 'Logged out successfully'
   });
 });
 app["delete"]('/api/users/:userId', /*#__PURE__*/function () {
   var _ref12 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee12(req, res) {
-    var userId;
+    var userId, user;
     return _regeneratorRuntime().wrap(function _callee12$(_context12) {
       while (1) switch (_context12.prev = _context12.next) {
         case 0:
-          _context12.prev = 0;
           userId = req.params.userId;
+          _context12.prev = 1;
           _context12.next = 4;
-          return User.findByIdAndDelete(userId);
+          return User.findById(userId);
         case 4:
-          // Delete the user
-
-          res.status(204).send(); // No content response
-          _context12.next = 11;
-          break;
+          user = _context12.sent;
+          if (user) {
+            _context12.next = 7;
+            break;
+          }
+          return _context12.abrupt("return", res.status(404).json({
+            message: 'User not found'
+          }));
         case 7:
-          _context12.prev = 7;
-          _context12.t0 = _context12["catch"](0);
-          console.error('Error deleting user:', _context12.t0);
-          res.status(500).json({
-            message: 'Error deleting user'
+          _context12.next = 9;
+          return PlayList.deleteMany({
+            createdBy: userId
           });
+        case 9:
+          _context12.next = 11;
+          return user.deleteOne();
         case 11:
+          res.json({
+            message: 'User and all associated playlists deleted successfully'
+          });
+          _context12.next = 18;
+          break;
+        case 14:
+          _context12.prev = 14;
+          _context12.t0 = _context12["catch"](1);
+          console.error('Error deleting user and playlists:', _context12.t0);
+          res.status(500).json({
+            message: 'Error deleting user and playlists'
+          });
+        case 18:
         case "end":
           return _context12.stop();
       }
-    }, _callee12, null, [[0, 7]]);
+    }, _callee12, null, [[1, 14]]);
   }));
   return function (_x23, _x24) {
     return _ref12.apply(this, arguments);
   };
 }());
-app.use(express["static"](path.join(__dirname, '..', '..', 'frontend/public')));
+app.post('/api/friend/:userId', /*#__PURE__*/function () {
+  var _ref13 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee13(req, res) {
+    var userId, currentUserId, user, currentUser;
+    return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+      while (1) switch (_context13.prev = _context13.next) {
+        case 0:
+          userId = req.params.userId;
+          currentUserId = req.body.currentUserId;
+          _context13.prev = 2;
+          _context13.next = 5;
+          return User.findById(userId);
+        case 5:
+          user = _context13.sent;
+          _context13.next = 8;
+          return User.findById(currentUserId);
+        case 8:
+          currentUser = _context13.sent;
+          if (!(!user || !currentUser)) {
+            _context13.next = 11;
+            break;
+          }
+          return _context13.abrupt("return", res.status(404).json({
+            message: 'User not found'
+          }));
+        case 11:
+          // Add current user to the friend's list
+          user.friends.push(currentUser._id);
+          _context13.next = 14;
+          return user.save();
+        case 14:
+          // Optionally, add this user to the current user's friend list as well
+          currentUser.friends.push(user._id);
+          _context13.next = 17;
+          return currentUser.save();
+        case 17:
+          res.json(currentUser); // Return updated current user
+          _context13.next = 24;
+          break;
+        case 20:
+          _context13.prev = 20;
+          _context13.t0 = _context13["catch"](2);
+          console.error('Error friending user:', _context13.t0);
+          res.status(500).json({
+            message: 'Error friending user'
+          });
+        case 24:
+        case "end":
+          return _context13.stop();
+      }
+    }, _callee13, null, [[2, 20]]);
+  }));
+  return function (_x25, _x26) {
+    return _ref13.apply(this, arguments);
+  };
+}());
+app.post('/api/unfriend/:userId', /*#__PURE__*/function () {
+  var _ref14 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee14(req, res) {
+    var userId, currentUserId, user, currentUser;
+    return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+      while (1) switch (_context14.prev = _context14.next) {
+        case 0:
+          userId = req.params.userId;
+          currentUserId = req.body.currentUserId;
+          _context14.prev = 2;
+          _context14.next = 5;
+          return User.findById(userId);
+        case 5:
+          user = _context14.sent;
+          _context14.next = 8;
+          return User.findById(currentUserId);
+        case 8:
+          currentUser = _context14.sent;
+          if (!(!user || !currentUser)) {
+            _context14.next = 11;
+            break;
+          }
+          return _context14.abrupt("return", res.status(404).json({
+            message: 'User not found'
+          }));
+        case 11:
+          // Remove current user from the friend's list
+          user.friends.pull(currentUser._id);
+          _context14.next = 14;
+          return user.save();
+        case 14:
+          // Optionally, remove this user from the current user's friend list as well
+          currentUser.friends.pull(user._id);
+          _context14.next = 17;
+          return currentUser.save();
+        case 17:
+          res.json(currentUser); // Return updated current user
+          _context14.next = 24;
+          break;
+        case 20:
+          _context14.prev = 20;
+          _context14.t0 = _context14["catch"](2);
+          console.error('Error unfriending user:', _context14.t0);
+          res.status(500).json({
+            message: 'Error unfriending user'
+          });
+        case 24:
+        case "end":
+          return _context14.stop();
+      }
+    }, _callee14, null, [[2, 20]]);
+  }));
+  return function (_x27, _x28) {
+    return _ref14.apply(this, arguments);
+  };
+}());
+app.put('/api/playlists/:id/add-song', /*#__PURE__*/function () {
+  var _ref15 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee15(req, res) {
+    var id, songId, playlist;
+    return _regeneratorRuntime().wrap(function _callee15$(_context15) {
+      while (1) switch (_context15.prev = _context15.next) {
+        case 0:
+          id = req.params.id;
+          songId = req.body.songId;
+          _context15.prev = 2;
+          _context15.next = 5;
+          return PlayList.findByIdAndUpdate(id, {
+            $addToSet: {
+              songs: songId
+            }
+          },
+          // Add song only if it's not already in the list
+          {
+            "new": true
+          });
+        case 5:
+          playlist = _context15.sent;
+          if (playlist) {
+            _context15.next = 8;
+            break;
+          }
+          return _context15.abrupt("return", res.status(404).json({
+            message: 'Playlist not found'
+          }));
+        case 8:
+          res.json(playlist);
+          _context15.next = 15;
+          break;
+        case 11:
+          _context15.prev = 11;
+          _context15.t0 = _context15["catch"](2);
+          console.error('Error adding song to playlist:', _context15.t0);
+          res.status(500).json({
+            message: 'Error adding song to playlist'
+          });
+        case 15:
+        case "end":
+          return _context15.stop();
+      }
+    }, _callee15, null, [[2, 11]]);
+  }));
+  return function (_x29, _x30) {
+    return _ref15.apply(this, arguments);
+  };
+}());
+
+// Remove a song from the playlist
+app.put('/api/playlists/:id/remove-song', /*#__PURE__*/function () {
+  var _ref16 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee16(req, res) {
+    var id, songId, playlist;
+    return _regeneratorRuntime().wrap(function _callee16$(_context16) {
+      while (1) switch (_context16.prev = _context16.next) {
+        case 0:
+          id = req.params.id;
+          songId = req.body.songId;
+          _context16.prev = 2;
+          _context16.next = 5;
+          return PlayList.findByIdAndUpdate(id, {
+            $pull: {
+              songs: songId
+            }
+          },
+          // Remove song from the list
+          {
+            "new": true
+          });
+        case 5:
+          playlist = _context16.sent;
+          if (playlist) {
+            _context16.next = 8;
+            break;
+          }
+          return _context16.abrupt("return", res.status(404).json({
+            message: 'Playlist not found'
+          }));
+        case 8:
+          res.json(playlist);
+          _context16.next = 15;
+          break;
+        case 11:
+          _context16.prev = 11;
+          _context16.t0 = _context16["catch"](2);
+          console.error('Error removing song from playlist:', _context16.t0);
+          res.status(500).json({
+            message: 'Error removing song from playlist'
+          });
+        case 15:
+        case "end":
+          return _context16.stop();
+      }
+    }, _callee16, null, [[2, 11]]);
+  }));
+  return function (_x31, _x32) {
+    return _ref16.apply(this, arguments);
+  };
+}());
+app.get('/api/playlists/:id/comments', /*#__PURE__*/function () {
+  var _ref17 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee17(req, res) {
+    var id, playlist;
+    return _regeneratorRuntime().wrap(function _callee17$(_context17) {
+      while (1) switch (_context17.prev = _context17.next) {
+        case 0:
+          id = req.params.id;
+          _context17.prev = 1;
+          _context17.next = 4;
+          return PlayList.findById(id).populate({
+            path: 'comments',
+            // Populate comments
+            populate: {
+              path: 'user',
+              select: 'username'
+            } // Within each comment, populate the 'user' field
+          });
+        case 4:
+          playlist = _context17.sent;
+          if (playlist) {
+            _context17.next = 7;
+            break;
+          }
+          return _context17.abrupt("return", res.status(404).json({
+            message: 'Playlist not found'
+          }));
+        case 7:
+          // Return only the populated comments array
+          res.status(200).json(playlist.comments);
+          _context17.next = 14;
+          break;
+        case 10:
+          _context17.prev = 10;
+          _context17.t0 = _context17["catch"](1);
+          console.error("Error fetching comments:", _context17.t0);
+          res.status(500).json({
+            message: 'Error fetching comments'
+          });
+        case 14:
+        case "end":
+          return _context17.stop();
+      }
+    }, _callee17, null, [[1, 10]]);
+  }));
+  return function (_x33, _x34) {
+    return _ref17.apply(this, arguments);
+  };
+}());
+app.post('/api/playlists/:playlistId/comments', /*#__PURE__*/function () {
+  var _ref18 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee18(req, res) {
+    var playlistId, _req$body6, userId, text, comment;
+    return _regeneratorRuntime().wrap(function _callee18$(_context18) {
+      while (1) switch (_context18.prev = _context18.next) {
+        case 0:
+          playlistId = req.params.playlistId;
+          _req$body6 = req.body, userId = _req$body6.userId, text = _req$body6.text;
+          _context18.prev = 2;
+          comment = new Comment({
+            user: userId,
+            text: text,
+            date: new Date()
+          });
+          _context18.next = 6;
+          return comment.save();
+        case 6:
+          _context18.next = 8;
+          return PlayList.findByIdAndUpdate(playlistId, {
+            $push: {
+              comments: comment._id
+            }
+          });
+        case 8:
+          res.status(201).json(comment);
+          _context18.next = 15;
+          break;
+        case 11:
+          _context18.prev = 11;
+          _context18.t0 = _context18["catch"](2);
+          console.error('Error adding comment:', _context18.t0);
+          res.status(500).json({
+            message: 'Error adding comment'
+          });
+        case 15:
+        case "end":
+          return _context18.stop();
+      }
+    }, _callee18, null, [[2, 11]]);
+  }));
+  return function (_x35, _x36) {
+    return _ref18.apply(this, arguments);
+  };
+}());
+app.get('/comments/:id', /*#__PURE__*/function () {
+  var _ref19 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee19(req, res) {
+    var id, comment;
+    return _regeneratorRuntime().wrap(function _callee19$(_context19) {
+      while (1) switch (_context19.prev = _context19.next) {
+        case 0:
+          _context19.prev = 0;
+          id = req.params.id;
+          _context19.next = 4;
+          return Comment.findById(id);
+        case 4:
+          comment = _context19.sent;
+          if (comment) {
+            _context19.next = 7;
+            break;
+          }
+          return _context19.abrupt("return", res.status(404).json({
+            message: 'Comment not found'
+          }));
+        case 7:
+          res.status(200).json(comment);
+          _context19.next = 14;
+          break;
+        case 10:
+          _context19.prev = 10;
+          _context19.t0 = _context19["catch"](0);
+          console.error(_context19.t0);
+          res.status(500).json({
+            message: 'Server error'
+          });
+        case 14:
+        case "end":
+          return _context19.stop();
+      }
+    }, _callee19, null, [[0, 10]]);
+  }));
+  return function (_x37, _x38) {
+    return _ref19.apply(this, arguments);
+  };
+}());
+
+// Serve static files from React app build
+app.use(express["static"](path.join(__dirname, '..', '..', 'frontend', 'public')));
+
+// Catch-all handler for serving React app
 app.get('*', function (req, res) {
-  res.sendFile(path.join(__dirname, '..', '..', 'frontend/public', 'index.html')); // Ensure this points to your correct index.html
+  res.sendFile(path.join(__dirname, '..', '..', 'frontend', 'public', 'index.html'));
 });
+
+// Start server
 var port = process.env.PORT || 3000;
-app.listen(port, '0.0.0.0', function () {
+app.listen(port, function () {
   console.log("Server is running on port ".concat(port));
 });

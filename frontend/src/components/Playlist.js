@@ -15,36 +15,37 @@ const Playlist = () => {
   const [showAddSongForm, setShowAddSongForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false); // State to show edit form
 
-  // Fetch playlist and songs data on mount
-  useEffect(() => {
-    const fetchPlaylistData = async () => {
-      try {
-        const playlistResponse = await fetch(`/api/playlists/${id}`);
-        if (!playlistResponse.ok) {
-          throw new Error(`Error fetching playlist: ${playlistResponse.statusText}`);
-        }
-
-        const playlistData = await playlistResponse.json();
-        const songResponse = await fetch('/api/songs');
-        if (!songResponse.ok) {
-          throw new Error(`Error fetching songs: ${songResponse.statusText}`);
-        }
-
-        const allSongs = await songResponse.json();
-        const playlistSongs = playlistData.songs
-          .map(songId => allSongs.find(song => song._id === songId))
-          .filter(song => song !== undefined);
-
-        setPlaylist(playlistData);
-        setSongs(playlistSongs);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError('Error loading playlist or songs');
-        setLoading(false);
+  // Fetch playlist and songs data
+  const fetchPlaylistData = async () => {
+    try {
+      const playlistResponse = await fetch(`/api/playlists/${id}`);
+      if (!playlistResponse.ok) {
+        throw new Error(`Error fetching playlist: ${playlistResponse.statusText}`);
       }
-    };
 
+      const playlistData = await playlistResponse.json();
+      const songResponse = await fetch('/api/songs');
+      if (!songResponse.ok) {
+        throw new Error(`Error fetching songs: ${songResponse.statusText}`);
+      }
+
+      const allSongs = await songResponse.json();
+      const playlistSongs = playlistData.songs
+        .map(songId => allSongs.find(song => song._id === songId))
+        .filter(song => song !== undefined);
+
+      setPlaylist(playlistData);
+      setSongs(playlistSongs);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setError('Error loading playlist or songs');
+      setLoading(false);
+    }
+  };
+
+  // useEffect to fetch data on mount and whenever the id changes
+  useEffect(() => {
     fetchPlaylistData();
   }, [id]);
 
@@ -56,9 +57,25 @@ const Playlist = () => {
     setShowAddSongForm(false);
   };
 
-  const handleAddSongSubmit = (songDetails) => {
+  const handleSongAdded = (song) => {
+    // Call the fetchPlaylistData function to refresh the playlist
+    fetchPlaylistData();
     setShowAddSongForm(false);
-    console.log("New song details:", songDetails);
+  };
+
+  const handleRemoveSong = async (songId) => {
+    try {
+      await fetch(`/api/playlists/${playlist._id}/remove-song`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ songId }),
+      });
+      fetchPlaylistData(); // Re-fetch data after removing a song
+    } catch (error) {
+      console.error('Error removing song from playlist:', error);
+    }
   };
 
   const handleEditPlaylistClick = () => {
@@ -71,9 +88,8 @@ const Playlist = () => {
   };
 
   const handleDelete = async (id) => {
-    // Your logic to delete the playlist
     console.log(`Deleting playlist with ID: ${id}`);
-    // You can add your API call to delete the playlist here
+    // Add your API call to delete the playlist here
   };
 
   // Check if the current user is the owner of the playlist
@@ -98,33 +114,36 @@ const Playlist = () => {
         </>
       )}
 
-      <h3>Songs</h3>
-      <ul>
-        {songs.length > 0 ? (
-          songs.map((song) => (
-            <li key={song._id}>
-              <Song {...song} />
-            </li>
-          ))
-        ) : (
-          <p>No songs in this playlist.</p>
-        )}
-      </ul>
-
       {showAddSongForm && (
         <AddSongToPlaylist
+          playlistId={playlist._id}
+          songs={songs} 
           onCancel={handleCancelAddSong}
-          onSubmit={handleAddSongSubmit}
+          onSongAdded={handleSongAdded} 
         />
       )}
 
       {showEditForm && (
         <EditPlaylist
           playlist={playlist}
-          onSave={handleSavePlaylist}  // Updated to use the correct function
-          onDelete={handleDelete}      // Ensure this is defined
+          onSave={handleSavePlaylist}  
+          onDelete={handleDelete}      
         />
       )}
+
+      <h3>Songs</h3>
+      <ul>
+        {songs.length > 0 ? (
+          songs.map((song) => (
+            <li key={song._id}>
+              <Song {...song} />
+              {isOwner && <button onClick={() => handleRemoveSong(song._id)}>Remove</button>}
+            </li>
+          ))
+        ) : (
+          <p>No songs in this playlist.</p>
+        )}
+      </ul>
     </div>
   );
 };

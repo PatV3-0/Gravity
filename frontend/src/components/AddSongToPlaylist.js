@@ -13,104 +13,83 @@ class AddSongToPlaylist extends Component {
         releaseYear: '',
         duration: '',
       },
+      searchQuery: '',
+      filteredSongs: [],
+      allSongs: [],
     };
   }
 
-  handleChange = (e) => {
-    const { name, value } = e.target;
-    this.setState((prevState) => ({
-      songDetails: {
-        ...prevState.songDetails,
-        [name]: value,
-      },
-    }));
+  componentDidMount() {
+    this.fetchSongs();
+  }
+
+  // Fetch songs from the API
+  fetchSongs = async () => {
+    try {
+      const response = await fetch('/api/songs'); // API call to fetch songs
+      const data = await response.json();
+      this.setState({ allSongs: data, filteredSongs: [] });
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+    }
   };
 
-  handleSubmit = (e) => {
-    e.preventDefault();
-    // Log the song details, you can replace this with any further action
-    console.log("Song details:", this.state.songDetails);
+  handleInputChange = (e) => {
+    const query = e.target.value;
+    this.setState({ searchQuery: query });
+  };
+
+  handleSearch = () => {
+    const query = this.state.searchQuery.toLowerCase();
+    const filteredSongs = this.state.allSongs.filter(song => {
+      const titleMatch = song.name && song.name.toLowerCase().includes(query);
+      const artistMatch = song.artist && song.artist.toLowerCase().includes(query);
+      const albumMatch = song.album && song.album.toLowerCase().includes(query);
+      const genreMatch = song.genre && song.genre.toLowerCase().includes(query);
+
+      return titleMatch || artistMatch || albumMatch || genreMatch;
+    });
+    this.setState({ filteredSongs });
+  };
+
+  handleSelectSong = async (song) => {
+    try {
+      await fetch(`/api/playlists/${this.props.playlistId}/add-song`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ songId: song._id }),
+      });
+      this.props.onSongAdded(song); // Notify parent to update the playlist
+    } catch (error) {
+      console.error('Error adding song to playlist:', error);
+    }
   };
 
   render() {
-    const { title, artist, album, genre, releaseYear, duration } = this.state.songDetails;
     const { onCancel } = this.props;
 
     return (
       <div className="add-song-container">
         <h3>Add Song to Playlist</h3>
-        <form onSubmit={this.handleSubmit}>
-          <div>
-            <label htmlFor="title">Title:</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={title}
-              onChange={this.handleChange}
-              required
-            />
-          </div>
+        <input
+          type="text"
+          placeholder="Search for songs"
+          value={this.state.searchQuery}
+          onChange={this.handleInputChange}
+        />
+        <button type="button" onClick={this.handleSearch}>Search</button>
 
-          <div>
-            <label htmlFor="artist">Artist:</label>
-            <input
-              type="text"
-              id="artist"
-              name="artist"
-              value={artist}
-              onChange={this.handleChange}
-              required
-            />
-          </div>
+        <ul>
+          {this.state.filteredSongs.map(song => (
+            <li key={song._id} onClick={() => this.handleSelectSong(song)}>
+              {song.name} - {song.artist}
+            </li>
+          ))}
+        </ul>
 
-          <div>
-            <label htmlFor="album">Album:</label>
-            <input
-              type="text"
-              id="album"
-              name="album"
-              value={album}
-              onChange={this.handleChange}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="genre">Genre:</label>
-            <input
-              type="text"
-              id="genre"
-              name="genre"
-              value={genre}
-              onChange={this.handleChange}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="releaseYear">Release Year:</label>
-            <input
-              type="number"
-              id="releaseYear"
-              name="releaseYear"
-              value={releaseYear}
-              onChange={this.handleChange}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="duration">Duration:</label>
-            <input
-              type="text"
-              id="duration"
-              name="duration"
-              value={duration}
-              onChange={this.handleChange}
-            />
-          </div>
-
-          <button type="submit">Add Song</button>
-          <button type="button" onClick={onCancel}>Cancel</button>
-        </form>
+        <button type="button" onClick={onCancel}>Cancel</button>
       </div>
     );
   }
