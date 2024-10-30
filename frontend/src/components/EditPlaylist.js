@@ -1,24 +1,44 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
-const EditPlaylist = ({ playlist, onSave, onDelete }) => {
-  const navigate = useNavigate(); // Initialize navigate
+const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData, onDelete }) => {
+  const navigate = useNavigate();
   const [playlistName, setPlaylistName] = useState(playlist ? playlist.name : '');
   const [playlistDescription, setPlaylistDescription] = useState(playlist ? playlist.description : '');
+  const [tags, setTags] = useState(playlist ? playlist.tags : ''); 
+  const [genre, setGenre] = useState(playlist ? playlist.genre : '');
+  const [playlistArt, setPlaylistArt] = useState(playlist ? playlist.playlistArt : ''); 
+  const [hasSaved, setHasSaved] = useState(false);
+  const [hasDeleted, setHasDeleted] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'playlistName') {
-      setPlaylistName(value);
-    } else if (name === 'playlistDescription') {
-      setPlaylistDescription(value);
+    switch (name) {
+      case 'playlistName':
+        setPlaylistName(value);
+        break;
+      case 'playlistDescription':
+        setPlaylistDescription(value);
+        break;
+      case 'tags':
+        setTags(value); 
+        break;
+      case 'genre':
+        setGenre(value); 
+        break;
+      case 'playlistArt':
+        setPlaylistArt(value); 
+        break;
+      default:
+        break;
     }
   };
 
+  // Handle form submission for updating the playlist
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (onSave && playlist) {
+    if (onSave && playlist && !hasSaved) {
       try {
         const response = await fetch(`/api/playlists/${playlist._id}`, {
           method: 'PUT',
@@ -28,47 +48,33 @@ const EditPlaylist = ({ playlist, onSave, onDelete }) => {
           body: JSON.stringify({
             name: playlistName,
             description: playlistDescription,
+            tags: tags, 
+            genre: genre, 
+            playlistArt: playlistArt, 
           }),
         });
 
-        if (!response.ok) {
-          throw new Error('Error updating playlist');
+        if (response.ok) {
+          const updatedPlaylist = await response.json();
+          onSave(updatedPlaylist);
+          setHasSaved(true);
+          fetchPlaylistData();
+        } else {
+          console.error('Failed to update playlist');
+          const updatedPlaylist = await response.json();
         }
-
-        const updatedPlaylist = await response.json();
-        onSave(updatedPlaylist); // Call the onSave prop with the updated playlist
       } catch (error) {
         console.error('Error updating playlist:', error);
       }
     }
   };
 
+  // Handle playlist deletion
   const handleDelete = async () => {
-    if (onDelete && playlist) {
-      const playlistId = playlist?._id; // Use optional chaining here
-
-      if (playlistId) {
-        try {
-          const response = await fetch(`/api/playlists/${playlistId}`, {
-            method: 'DELETE',
-          });
-
-          if (!response.ok) {
-            throw new Error('Error deleting playlist');
-          }
-
-          const data = await response.json();
-          onDelete(playlistId); // Call onDelete prop to remove the playlist from state
-          console.log(data.message); // Log success message
-          
-          // Redirect to home page after deletion
-          navigate('/home'); // Change '/' to your desired home route
-        } catch (error) {
-          console.error('Error deleting playlist:', error);
-        }
-      } else {
-        console.error('Playlist ID is undefined');
-      }
+    const confirmed = window.confirm("Are you sure you want to delete this playlist?");
+    if (confirmed) {
+      await onDelete(); 
+      navigate('/home'); 
     }
   };
 
@@ -88,6 +94,27 @@ const EditPlaylist = ({ playlist, onSave, onDelete }) => {
           name="playlistDescription"
           placeholder="Playlist Description"
           value={playlistDescription}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="tags"
+          placeholder="Tags"
+          value={tags}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="genre"
+          placeholder="Genre"
+          value={genre}
+          onChange={handleChange}
+        />
+        <input
+          type="text"
+          name="playlistArt"
+          placeholder="Playlist Art URL"
+          value={playlistArt}
           onChange={handleChange}
         />
         <button type="submit">Save</button>

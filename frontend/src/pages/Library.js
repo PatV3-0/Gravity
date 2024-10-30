@@ -1,62 +1,56 @@
-import React, { Component } from 'react';
-import './Library.css';
-import Playlist from '../components/Playlist';
-import { useUser } from '../UserContext'; // Import useUser to access currentUser
+import React, { useState, useEffect } from 'react';
+import PlaylistsList from '../components/PlaylistsList';
+import CreatePlaylist from '../components/CreatePlaylist'; // Import CreatePlaylist
+import { useParams } from 'react-router-dom';
+import { useUser } from '../userContext';
 
-class Library extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      playlists: [],
-      isLoading: true,
-      error: null,
-    };
-  }
+const LibraryPage = () => {
+  const { currentUser } = useUser(); 
+  const { userId } = useParams();
+  const [playlists, setPlaylists] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  async componentDidMount() {
+  const fetchPlaylists = async () => {
     try {
-      // Fetch playlists for the current user
-      const response = await fetch(`/api/playlists/user/${this.props.currentUser._id}`);
-      const playlists = await response.json();
-      this.setState({ playlists, isLoading: false });
+      const response = await fetch(`/api/playlists`);
+      const playlistsData = await response.json();
+      const userPlaylists = playlistsData.filter(playlist => playlist.createdBy === userId);
+      setPlaylists(userPlaylists);
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching playlists:", error);
-      this.setState({ error: "Failed to load playlists", isLoading: false });
+      console.error('Error fetching playlists:', error);
+      setError(error.message);
+      setLoading(false);
     }
+  };
+
+  // Function to handle creating a new playlist
+  const handleCreatePlaylist = async(newPlaylist) => {
+    await fetchPlaylists();
+  };
+
+  useEffect(() => {
+    fetchPlaylists();
+  }, [userId]);
+
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  render() {
-    const { playlists, isLoading, error } = this.state;
-    console.log(playlists);
-    if (isLoading) {
-      return <p>Loading playlists...</p>;
-    }
-
-    if (error) {
-      return <p>{error}</p>;
-    }
-
-    return (
-      <div className="library-page max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-center">Your Playlists</h1>
-        {playlists.length > 0 ? (
-          playlists.map((playlist) => (
-            <Playlist
-              key={playlist._id}
-              playlist={playlist}
-              songs={playlist.songs}
-            />
-          ))
-        ) : (
-          <p>No playlists found.</p>
-        )}
-      </div>
-    );
+  if (error) {
+    return <div>{error}</div>;
   }
-}
 
-// Export with `useUser` to access `currentUser`
-export default function LibraryWithUser() {
-  const { currentUser } = useUser();
-  return <Library currentUser={currentUser} />;
-}
+  return (
+    <div className="library-page">
+      <h1>User Playlists</h1>
+      {currentUser && (
+        <CreatePlaylist onCreate={handleCreatePlaylist} /> // Place CreatePlaylist at the top
+      )}
+      <PlaylistsList playlists={playlists} />
+    </div>
+  );
+};
+
+export default LibraryPage;

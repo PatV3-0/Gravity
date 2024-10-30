@@ -6,9 +6,9 @@ class PlaylistsList extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      songs: [], 
-      loading: true, 
-      error: null 
+      songs: [],
+      loading: true,
+      error: null,
     };
   }
 
@@ -26,7 +26,7 @@ class PlaylistsList extends Component {
   }
 
   render() {
-    const { playlists } = this.props;
+    const { playlists, title } = this.props; // Destructure the title prop
     const { songs, loading, error } = this.state;
 
     if (loading) {
@@ -39,12 +39,12 @@ class PlaylistsList extends Component {
 
     return (
       <div className="playlists-list-component">
-        <h2>Playlists</h2>
+        <h2>{title}</h2> {/* Use the title prop for the header */}
         <div className="playlist-previews-grid">
           {playlists.map((playlist) => (
-            <PlaylistPreview 
-              key={playlist._id} 
-              playlist={playlist} 
+            <PlaylistPreview
+              key={playlist._id}
+              playlist={playlist}
               songs={songs} // Pass the fetched songs to PlaylistPreview
             />
           ))}

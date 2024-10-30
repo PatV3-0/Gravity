@@ -1,8 +1,9 @@
 .playlist-preview {
-  width: 90%;
+  width: 100%;
   padding: 10px;
-  border: 1px solid black;
+  border: 3px solid #DA2F5E;
   border-radius: 5px;
+  background-color: #2c2c2c;
 }
 
 .playlist-preview h3 {

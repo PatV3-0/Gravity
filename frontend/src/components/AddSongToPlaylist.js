@@ -12,10 +12,13 @@ class AddSongToPlaylist extends Component {
         genre: '',
         releaseYear: '',
         duration: '',
+        spotifyUrl: '',
       },
       searchQuery: '',
       filteredSongs: [],
       allSongs: [],
+      isAddingNewSong: false,
+      error: null, // New state for error handling
     };
   }
 
@@ -23,14 +26,14 @@ class AddSongToPlaylist extends Component {
     this.fetchSongs();
   }
 
-  // Fetch songs from the API
   fetchSongs = async () => {
     try {
-      const response = await fetch('/api/songs'); // API call to fetch songs
+      const response = await fetch('/api/songs');
       const data = await response.json();
       this.setState({ allSongs: data, filteredSongs: [] });
     } catch (error) {
       console.error('Error fetching songs:', error);
+      this.setState({ error: 'Failed to fetch songs' }); // Set error state
     }
   };
 
@@ -49,30 +52,92 @@ class AddSongToPlaylist extends Component {
 
       return titleMatch || artistMatch || albumMatch || genreMatch;
     });
-    this.setState({ filteredSongs });
+
+    this.setState({ filteredSongs, isAddingNewSong: filteredSongs.length === 0 });
   };
 
   handleSelectSong = async (song) => {
+  const { allSongs } = this.state;
+  const isDuplicate = allSongs.some(existingSong => existingSong._id === song._id);
+
+  if (isDuplicate) {
+    alert('This song is already in the playlist.');
+    return;
+  }
+
+  try {
+    await fetch(`/api/playlists/${this.props.playlistId}/add-song`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ songId: song._id }), 
+    });
+    this.props.onSongAdded(song);
+  } catch (error) {
+    console.error('Error adding song to playlist:', error);
+    this.setState({ error: 'Failed to add song to playlist' }); 
+  }
+};
+
+  handleAddSong = async () => {
+    const { songDetails, allSongs } = this.state;
+    const isDuplicate = allSongs.some(song =>
+      song.title === songDetails.title && 
+      song.artist === songDetails.artist && 
+      song.album === songDetails.album
+    );
+
+    if (isDuplicate) {
+      this.setState({ error: 'Duplicate song cannot be added to the database.' });
+      return;
+    }
+
     try {
-      await fetch(`/api/playlists/${this.props.playlistId}/add-song`, {
-        method: 'PUT',
+      const response = await fetch('/api/songs', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ songId: song._id }),
+        body: JSON.stringify(songDetails),
       });
-      this.props.onSongAdded(song); // Notify parent to update the playlist
+
+      if (response.ok) {
+        const newSong = await response.json();
+        this.props.onSongAdded(newSong);
+        this.setState({ 
+          isAddingNewSong: false, 
+          songDetails: { title: '', artist: '', album: '', genre: '', releaseYear: '', duration: '', spotifyUrl: '' }, 
+          error: null // Clear error
+        });
+        this.handleSelectSong(newSong);
+      } else {
+        this.setState({ error: 'Failed to add new song' }); 
+      }
     } catch (error) {
-      console.error('Error adding song to playlist:', error);
+      console.error('Error adding new song:', error);
+      this.setState({ error: 'Error adding new song' });
     }
+  };
+
+  handleSongDetailsChange = (e) => {
+    const { name, value } = e.target;
+    this.setState(prevState => ({
+      songDetails: {
+        ...prevState.songDetails,
+        [name]: value,
+      },
+    }));
   };
 
   render() {
     const { onCancel } = this.props;
+    const { filteredSongs, isAddingNewSong, songDetails, error } = this.state;
 
     return (
       <div className="add-song-container">
         <h3>Add Song to Playlist</h3>
+        {error && <p className="error">{error}</p>} {/* Display error message */}
         <input
           type="text"
           placeholder="Search for songs"
@@ -82,12 +147,26 @@ class AddSongToPlaylist extends Component {
         <button type="button" onClick={this.handleSearch}>Search</button>
 
         <ul>
-          {this.state.filteredSongs.map(song => (
+          {filteredSongs.map(song => (
             <li key={song._id} onClick={() => this.handleSelectSong(song)}>
               {song.name} - {song.artist}
             </li>
           ))}
         </ul>
+
+        {isAddingNewSong && (
+          <div>
+            <h4>Add New Song</h4>
+            <input name="title" placeholder="Title" value={songDetails.title} onChange={this.handleSongDetailsChange} />
+            <input name="artist" placeholder="Artist" value={songDetails.artist} onChange={this.handleSongDetailsChange} />
+            <input name="album" placeholder="Album" value={songDetails.album} onChange={this.handleSongDetailsChange} />
+            <input name="genre" placeholder="Genre" value={songDetails.genre} onChange={this.handleSongDetailsChange} />
+            <input name="releaseYear" placeholder="Release Year" value={songDetails.releaseYear} onChange={this.handleSongDetailsChange} />
+            <input name="duration" placeholder="Duration" value={songDetails.duration} onChange={this.handleSongDetailsChange} />
+            <input name="spotifyUrl" placeholder="Spotify url" value={songDetails.spotifyUrl} onChange={this.handleSongDetailsChange} />
+            <button type="button" onClick={this.handleAddSong}>Add Song</button>
+          </div>
+        )}
 
         <button type="button" onClick={onCancel}>Cancel</button>
       </div>

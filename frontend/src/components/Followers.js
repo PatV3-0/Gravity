@@ -4,27 +4,36 @@ import './Followers.css';
 
 class FollowersFollowing extends Component {
   render() {
-    const { friends } = this.props;
+    const { followers, following } = this.props;
 
-    if (!friends || friends.length === 0) {
-      return <div>No friends to display</div>;
-    }
-
-    // Filter out friends that have errors
-    const validFriends = friends.filter(friend => !friend.message);
-
-    if (validFriends.length === 0) {
-      return <div>No valid friends to display due to server errors</div>;
+    // Check if there are followers or following
+    if ((!followers || followers.length === 0) && (!following || following.length === 0)) {
+      return <div>No followers or following to display</div>;
     }
 
     return (
       <div className="followers-following-component">
-        <h2>Friends</h2>
-        <div className="friends-list">
-          {validFriends.map((user) => (
-            <UserPreview key={user._id} user={user} />
-          ))}
-        </div>
+        {followers && followers.length > 0 && (
+          <>
+            <h2>Followers</h2>
+            <div className="friends-list">
+              {followers.map(user => (
+                <UserPreview key={user._id} user={user} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {following && following.length > 0 && (
+          <>
+            <h2>Following</h2>
+            <div className="friends-list">
+              {following.map(user => (
+                <UserPreview key={user._id} user={user} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     );
   }

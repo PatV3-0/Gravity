@@ -5,8 +5,9 @@ module.exports = {
   mode: 'development',
   entry: './frontend/src/index.js',
   output: {
-    path: path.resolve(__dirname, 'frontend', 'public'),
+    path: path.resolve(__dirname, 'frontend', 'dist'),
     filename: 'bundle.js',
+    clean: true,
   },
   module: {
     rules: [
@@ -17,24 +18,32 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader'],
+        use: ['style-loader', 'css-loader', 'postcss-loader'], // Include postcss-loader
       },
       {
         test: /\.(png|jpg|gif|svg)$/,
         use: [
-          'file-loader',
-        ]
+          {
+            loader: 'file-loader',
+            options: {
+              name: '[name].[hash].[ext]',
+              outputPath: 'images/',
+            },
+          },
+        ],
       },
     ],
   },
   plugins: [
     new HtmlWebpackPlugin({
       template: './frontend/public/index.html',
+      filename: 'index.html',
+      inject: 'body',
     }),
   ],
   devServer: {
     static: {
-      directory: path.resolve(__dirname, 'frontend', 'public'),  // Serve static files
+      directory: path.resolve(__dirname, 'frontend', 'public'),
     },
     port: 3000,
     hot: true,

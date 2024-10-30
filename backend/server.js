@@ -1,68 +1,28 @@
 const express = require('express');
-const mongoose = require('mongoose');
+const {MongoClient, ObjectId} = require('mongodb');
 const path = require('path');
 const cors = require('cors');
 
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
 // MongoDB connection
 const mongoURI = 'mongodb+srv://rainbirdwebb05:IgnoreThisBull1@gravitymaincluster.0t7iv.mongodb.net/mainDatabase';
-mongoose.connect(mongoURI)
-  .then(() => console.log("MongoDB connected"))
+const client = new MongoClient(mongoURI);
+let db;
+
+client.connect()
+  .then(()=>{
+    console.log("MongoDB connected");
+    db = client.db('mainDatabase');
+  })
   .catch(err => console.error("MongoDB connection error:", err));
-
-// Define schemas
-const PlaylistSchema = new mongoose.Schema({
-  name: String,
-  description: String,
-  dateCreated: { type: Date, default: Date.now },
-  createdBy: mongoose.Schema.Types.ObjectId,
-  songs: [mongoose.Schema.Types.ObjectId],
-  comments: [mongoose.Schema.Types.ObjectId],
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-});
-
-const UserSchema = new mongoose.Schema({
-  username: String,
-  name: String,
-  profileImage: String,
-  surname: String,
-  password: String,
-  email: String,
-  playlists: [mongoose.Schema.Types.ObjectId],
-  friends: [mongoose.Schema.Types.ObjectId]
-});
-
-const SongSchema = new mongoose.Schema({
-  title: String,
-  artist: String,
-  album: String,
-  genre: String,
-  releaseYear: Number,
-  duration: String,
-  albumArt: String
-});
-
-const CommentSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, // Reference to the User model
-  playlist: { type: mongoose.Schema.Types.ObjectId, ref: 'PlayList' }, // Reference to the PlayList model
-  text: String,
-  date: { type: Date, default: Date.now }
-});
-
-// Create models
-const PlayList = mongoose.model('PlayList', PlaylistSchema, 'playlists');
-const User = mongoose.model('User', UserSchema, 'users');
-const Song = mongoose.model('Song', SongSchema, 'songs');
-const Comment = mongoose.model('Comment', CommentSchema, 'comments');
 
 // API routes
 app.get('/api/playlists', async (req, res) => {
   try {
-    const playlists = await PlayList.find();
+    const playlists = await db.collection('playlists').find().toArray();
     res.json(playlists);
   } catch (error) {
     console.error("Error fetching playlists:", error); 
@@ -73,14 +33,14 @@ app.get('/api/playlists', async (req, res) => {
 app.get('/api/playlists/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const playlist = await PlayList.findById(id)
-      .populate('songs')
-      .populate('comments'); // Populate comments with user information
-
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid ID format' });
     }
-
+    const playlist = await db.collection('playlists').findOne({_id: new ObjectId(id)});
+      if(!playlist){
+        return res.status(404).json({message: 'Playlist not found'});
+      }
+      
     res.json(playlist); // Send back the playlist
   } catch (error) {
     console.error("Error fetching playlist:", error);
@@ -91,7 +51,7 @@ app.get('/api/playlists/:id', async (req, res) => {
 
 app.get('/api/users', async (req, res) => {
   try {
-    const users = await User.find({}, '-password'); 
+    const users = await db.collection('users').find({}, {projection: {password: 0}}).toArray(); 
     res.json(users);
   } catch (error) {
     console.error("Error fetching users:", error);
@@ -102,12 +62,14 @@ app.get('/api/users', async (req, res) => {
 app.get('/api/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const user = await User.findById(userId); 
-
+    const user = await db.collection('users').findOne({_id: new ObjectId(userId)}, {
+      projection: { password: 0 }
+    });
+    
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
+    
     res.json(user);
   } catch (error) {
     console.error('Error fetching user:', error);
@@ -117,7 +79,7 @@ app.get('/api/users/:userId', async (req, res) => {
 
 app.get('/api/songs', async (req, res) => {
   try {
-    const songs = await Song.find();
+    const songs = await db.collection('songs').find().toArray();
     res.json(songs);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching songs' });
@@ -128,7 +90,7 @@ app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
+    const user = await db.collection('users').findOne({ email });
 
     if (!user || user.password !== password) {
       return res.status(401).json({ message: 'Invalid email or password' });
@@ -145,37 +107,104 @@ app.post('/api/signup', async (req, res) => {
   const { fullName, email, password, username, surname, profileImage } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email });
+    const existingUser = await db.collection('users').findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already in use' });
     }
 
-    const newUser = new User({
+    const newUser = {
+      admin: "false",
       username,
       name: fullName,
       surname,
       email,
-      password, 
+      password,
       profileImage,
       playlists: [],
-      friends: [],
-    });
+      savedplaylists: [],
+      followers: [],
+      following: []
+    };
 
-    await newUser.save();
-    res.status(201).json({ message: 'User created successfully', user: newUser });
+const result = await db.collection('users').insertOne(newUser);
+const createdUser = await db.collection('users').findOne({ _id: result.insertedId }); // Fetch the full user document
+
+res.status(201).json({ message: 'User created successfully', user: createdUser });
+
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ message: 'Error creating user' });
   }
 });
 
+app.put('/api/playlists/:id/reorder-songs', async (req, res) => {
+  const { id } = req.params;
+  const { songIds } = req.body;
+
+  try {
+    const result = await db.collection('playlists').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { songs: songIds } }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'Playlist not found' });
+    }
+
+    const updatedPlaylist = await db.collection('playlists').findOne({ _id: new ObjectId(id) });
+    res.status(200).json(updatedPlaylist);
+  } catch (error) {
+    console.error("Error updating song order:", error);
+    res.status(500).json({ error: 'Error saving new song order' });
+  }
+});
+
+app.delete('/api/songs/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        if (!ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid song ID format' });
+        }
+        const result = await db.collection('songs').deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ message: 'Song not found' });
+        }
+        res.status(200).json({ message: 'Song deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting song:', error);
+        res.status(500).json({ message: 'Error deleting song' });
+    }
+});
+
+app.post('/api/songs', async (req, res) => {
+  const { title, artist, album, genre, releaseYear, duration, spotifyUrl } = req.body;
+
+  try {
+    const newSong = {
+      name: title,
+      artist,
+      album,
+      genre,
+      releaseYear,
+      duration,
+      spotifyUrl,
+    };
+
+    const result = await db.collection('songs').insertOne(newSong);
+    res.status(201).json({ ...newSong, _id: result.insertedId }); // Return the new song with its ID
+  } catch (error) {
+    console.error('Error adding new song:', error);
+    res.status(500).json({ message: 'Error adding new song' });
+  }
+});
+
+
 app.put('/api/users/:userId', async (req, res) => {
-  console.log(req.params);
   const { userId } = req.params;
   const { username, profileImage, password, oldPassword } = req.body;
 
   try {
-    const user = await User.findById(userId);
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -184,74 +213,202 @@ app.put('/api/users/:userId', async (req, res) => {
       return res.status(400).json({ message: 'Old password is incorrect.' });
     }
 
-    if (username) user.username = username;
-    if (profileImage) user.profileImage = profileImage;
-    if (password) user.password = password;
+    const updates = {};
+    if (username) updates.username = username;
+    if (profileImage) {
+      if (!profileImage.startsWith('http')) {
+        return res.status(400).json({ message: 'Profile image URL must start with http://' });
+      }
+      updates.profileImage = profileImage;
+    }
+    if (password) updates.password = password;
 
-    const updatedUser = await user.save();
-    res.json(updatedUser);
+    const updatedUser = await db.collection('users').findOneAndUpdate(
+      { _id: new ObjectId(userId) },
+      { $set: updates },
+      { returnOriginal: false }
+    );
+
+    if (!updatedUser.value) {
+      return res.status(204).json({ message: 'No changes were made.' });
+    }
+
+    res.json(updatedUser.value);
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(500).json({ message: 'Error updating user' });
   }
 });
 
-app.post('/api/playlists', async (req, res) => {
-  const { userId, playlistName, description, dateCreated } = req.body;
+app.get('/api/users/:userId/savedPlaylists', async (req, res) => {
+  const { userId } = req.params;
+
   try {
-    const newPlaylist = new PlayList({
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) }, { projection: { savedplaylists: 1 } });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const savedPlaylists = await db.collection('playlists').find({ _id: { $in: user.savedplaylists.map(id => new ObjectId(id)) } }).toArray();
+    
+    res.json(savedPlaylists);
+  } catch (error) {
+    console.error('Error fetching saved playlists:', error);
+    res.status(500).json({ message: 'Error fetching saved playlists' });
+  }
+});
+
+app.post('/api/playlists/:id/save', async (req, res) => {
+  const playlistId = req.params.id;
+  const userId = req.body.userId;
+
+  try {
+    // Find the playlist using the MongoDB collection
+    const playlist = await db.collection('playlists').findOne({ _id: new ObjectId(playlistId) });
+    if (!playlist) {
+      return res.status(404).json({ message: 'Playlist not found' });
+    }
+
+    // Find the user and update their savedPlaylists
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const savedList = await db.collection('users.savedplaylists').findOne({ _id: new ObjectId(playlistId) });
+    if (savedList) {
+      return res.status(404).json({ message: 'Playlist already added' });
+    }
+
+    // Add the playlist to the user's savedPlaylists
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { savedplaylists: playlistId } } // Update the user's savedPlaylists in the database
+    );
+
+    res.status(200).json({ message: 'Playlist saved successfully', playlist });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+app.post('/api/playlists', async (req, res) => {
+  const { userId, playlistName, description, playlistArt, tags, genre } = req.body; // Destructure additional fields
+  try {
+    const newPlaylist = {
       name: playlistName,
       description: description,
-      dateCreated: dateCreated || new Date(),
+      dateCreated: new Date(),
       createdBy: userId,
+      playlistArt: playlistArt || '',
+      tags: tags || [], 
+      genre: genre || [], 
       songs: [],
       comments: [],
-    });
+    };
 
-    await newPlaylist.save();
-    res.status(201).json(newPlaylist);
+    // Insert the new playlist
+    const result = await db.collection('playlists').insertOne(newPlaylist);
+
+    // Update the user's document to include the new playlist ID
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { playlists: result.insertedId } } // Add the playlist ID to the user's playlists array
+    );
+
+    res.status(201).json(result.insertedId);
   } catch (error) {
     console.error('Error creating playlist:', error);
     res.status(500).json({ message: 'Error creating playlist' });
   }
 });
 
-app.put('/api/playlists/:id', async (req, res) => {
-  const { id } = req.params;
-  const { name, description } = req.body;
+app.post('/api/users/:userId/removeFriend', async (req, res) => {
+    const { userId } = req.params;
+    const { friendId } = req.body;
+
+    try {
+        // Remove friendId from the user's friends list
+        await db.collection('users').updateOne(
+            { _id: new ObjectId(userId) },
+            { $pull: { friends: friendId } } // Remove the friendId from the friends array
+        );
+
+        // Optionally, you might want to also remove userId from the friend's friends list
+        await db.collection('users').updateOne(
+            { _id: new ObjectId(friendId) },
+            { $pull: { friends: userId } } // Remove the userId from the friend's friends array
+        );
+
+        res.status(200).json({ message: 'Friend removed successfully' });
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).json({ message: 'Error removing friend' });
+    }
+});
+
+app.delete('/api/comments/:commentId', async (req, res) => {
+  const { commentId } = req.params;
 
   try {
-    const updatedPlaylist = await PlayList.findByIdAndUpdate(
-      id, 
-      { name, description }, 
-      { new: true }
-    );
+    const result = await db.collection('comments').deleteOne({ _id: new ObjectId(commentId) });
 
-    if (!updatedPlaylist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Comment not found' });
     }
 
-    res.json(updatedPlaylist);
+    res.status(200).json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ message: 'Error deleting comment' });
+  }
+});
+
+
+app.put('/api/playlists/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, description, genre, tags, playlistArt } = req.body;
+
+  try {
+    const updatedPlaylist = {
+      name,
+      description,
+      genre,
+      tags,
+      playlistArt,
+    };
+
+    const result = await db.collection('playlists').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updatedPlaylist }
+    );
+
+    if (result.modifiedCount > 0) {
+      res.status(200).json(updatedPlaylist);
+    } else {
+      res.status(404).json({ message: 'Playlist not found' });
+    }
   } catch (error) {
     console.error('Error updating playlist:', error);
     res.status(500).json({ message: 'Error updating playlist' });
   }
 });
 
+
 app.delete('/api/playlists/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const deletedPlaylist = await PlayList.findByIdAndDelete(id);
-    
-    if (!deletedPlaylist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+    const result = await db.collection('playlists').deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount > 0) {
+      res.status(204).send(); // No content to return
+    } else {
+      res.status(404).json({ message: 'Playlist not found' });
     }
-
-    const userId = deletedPlaylist.userId;
-    await User.findByIdAndUpdate(userId, { $pull: { playlists: id } });
-
-    res.json({ message: 'Playlist deleted successfully' });
   } catch (error) {
     console.error('Error deleting playlist:', error);
     res.status(500).json({ message: 'Error deleting playlist' });
@@ -266,13 +423,13 @@ app.delete('/api/users/:userId', async (req, res) => {
   const { userId } = req.params;
 
   try {
-    const user = await User.findById(userId);
+    const user = await db.collection('users').findOne({_id: new ObjectId(userId)});
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    await PlayList.deleteMany({ createdBy: userId });
-    await user.deleteOne();
+    await db.collection('playlists').deleteMany({ createdBy: new ObjectId(userId) });
+    await db.collection('users').deleteOne({ _id: new ObjectId(userId) });
 
     res.json({ message: 'User and all associated playlists deleted successfully' });
   } catch (error) {
@@ -286,25 +443,24 @@ app.post('/api/friend/:userId', async (req, res) => {
   const { currentUserId } = req.body;
 
   try {
-    const user = await User.findById(userId);
-    const currentUser = await User.findById(currentUserId);
+    // Update the current user's following list
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(currentUserId) },
+      { $addToSet: { following: userId } } // Add userId to the current user's following list
+    );
 
-    if (!user || !currentUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    // Update the target user's followers list
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { followers: currentUserId } } // Add currentUserId to the target user's followers list
+    );
 
-    // Add current user to the friend's list
-    user.friends.push(currentUser._id);
-    await user.save();
-
-    // Optionally, add this user to the current user's friend list as well
-    currentUser.friends.push(user._id);
-    await currentUser.save();
-
-    res.json(currentUser); // Return updated current user
+    // Optionally return the updated user data
+    const updatedUser = await db.collection('users').findOne({ _id: new ObjectId(currentUserId) });
+    res.status(200).json(updatedUser);
   } catch (error) {
-    console.error('Error friending user:', error);
-    res.status(500).json({ message: 'Error friending user' });
+    console.error('Error adding friend:', error);
+    res.status(500).json({ message: 'Error adding friend' });
   }
 });
 
@@ -313,25 +469,24 @@ app.post('/api/unfriend/:userId', async (req, res) => {
   const { currentUserId } = req.body;
 
   try {
-    const user = await User.findById(userId);
-    const currentUser = await User.findById(currentUserId);
+    // Remove userId from the current user's following list
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(currentUserId) },
+      { $pull: { following: userId } } // Remove userId from following
+    );
 
-    if (!user || !currentUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    // Remove currentUserId from the target user's followers list
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $pull: { followers: currentUserId } } // Remove currentUserId from followers
+    );
 
-    // Remove current user from the friend's list
-    user.friends.pull(currentUser._id);
-    await user.save();
-
-    // Optionally, remove this user from the current user's friend list as well
-    currentUser.friends.pull(user._id);
-    await currentUser.save();
-
-    res.json(currentUser); // Return updated current user
+    // Optionally return the updated user data
+    const updatedUser = await db.collection('users').findOne({ _id: new ObjectId(currentUserId) });
+    res.status(200).json(updatedUser);
   } catch (error) {
-    console.error('Error unfriending user:', error);
-    res.status(500).json({ message: 'Error unfriending user' });
+    console.error('Error removing friend:', error);
+    res.status(500).json({ message: 'Error removing friend' });
   }
 });
 
@@ -340,18 +495,22 @@ app.put('/api/playlists/:id/add-song', async (req, res) => {
   const { id } = req.params;
   const { songId } = req.body;
 
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+
   try {
-    const playlist = await PlayList.findByIdAndUpdate(
-      id,
-      { $addToSet: { songs: songId } }, // Add song only if it's not already in the list
-      { new: true }
+    const playlist = await db.collection('playlists').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $addToSet: { songs: new ObjectId(songId) } }, // Add song only if it's not already in the list
+      { returnOriginal: false }
     );
 
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+    if (!playlist.value) {
+      return res.status(200).json({ message: 'Playlist not found' });
     }
 
-    res.json(playlist);
+    res.json(playlist.value);
   } catch (error) {
     console.error('Error adding song to playlist:', error);
     res.status(500).json({ message: 'Error adding song to playlist' });
@@ -363,18 +522,22 @@ app.put('/api/playlists/:id/remove-song', async (req, res) => {
   const { id } = req.params;
   const { songId } = req.body;
 
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+
   try {
-    const playlist = await PlayList.findByIdAndUpdate(
-      id,
-      { $pull: { songs: songId } }, // Remove song from the list
-      { new: true }
+    const playlist = await db.collection('playlists').findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $pull: { songs: new ObjectId(songId) } },
+      { returnOriginal: false }
     );
 
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist not found' });
+    if (!playlist.value) {
+      return res.status(200).json({ message: 'Playlist not found' });
     }
 
-    res.json(playlist);
+    res.json(playlist.value);
   } catch (error) {
     console.error('Error removing song from playlist:', error);
     res.status(500).json({ message: 'Error removing song from playlist' });
@@ -384,22 +547,20 @@ app.put('/api/playlists/:id/remove-song', async (req, res) => {
 app.get('/api/playlists/:id/comments', async (req, res) => {
   const { id } = req.params;
 
-  try {
-    // Find the playlist by ID and populate the comments with user details
-    const playlist = await PlayList.findById(id)
-      .populate({
-        path: 'comments', // Populate comments
-        populate: { path: 'user', select: 'username' } // Within each comment, populate the 'user' field
-      });
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
 
+  try {
+    const playlist = await db.collection('playlists').findOne({ _id: new ObjectId(id) });
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist not found' });
     }
 
-    // Return only the populated comments array
-    res.status(200).json(playlist.comments);
+    const comments = await db.collection('comments').find({ _id: { $in: playlist.comments } }).toArray();
+    res.json(comments);
   } catch (error) {
-    console.error("Error fetching comments:", error);
+    console.error('Error fetching comments:', error);
     res.status(500).json({ message: 'Error fetching comments' });
   }
 });
@@ -409,16 +570,19 @@ app.post('/api/playlists/:playlistId/comments', async (req, res) => {
   const { userId, text } = req.body;
 
   try {
-    const comment = new Comment({
-      user: userId,
+    const comment = {
+      user: new ObjectId(userId),
       text,
       date: new Date(),
-    });
+    };
 
-    await comment.save();
+    const result = await db.collection('comments').insertOne(comment);
 
     // Update the playlist to include the new comment
-    await PlayList.findByIdAndUpdate(playlistId, { $push: { comments: comment._id } });
+    await db.collection('playlists').updateOne(
+      { _id: new ObjectId(playlistId) },
+      { $push: { comments: result.insertedId } }
+    );
 
     res.status(201).json(comment);
   } catch (error) {
@@ -427,31 +591,51 @@ app.post('/api/playlists/:playlistId/comments', async (req, res) => {
   }
 });
 
-app.get('/comments/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const comment = await Comment.findById(id);
+app.get('/api/comments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-        if (!comment) {
-            return res.status(404).json({ message: 'Comment not found' });
-        }
-
-        res.status(200).json(comment);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid ID format' });
     }
+
+    const comment = await db.collection('comments').findOne({ _id: new ObjectId(id) });
+
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    res.status(200).json(comment);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-// Serve static files from React app build
-app.use(express.static(path.join(__dirname, '..', '..', 'frontend', 'public')));
+app.get('/api/users/:userId/playlists', async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    const user = await db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-// Catch-all handler for serving React app
+    const playlists = await db.collection('playlists').find({ _id: { $in: user.playlists } }).toArray();
+    res.json(playlists);
+  } catch (error) {
+    console.error("Error fetching user's playlists:", error);
+    res.status(500).json({ message: 'Error fetching playlists' });
+  }
+});
+
+
+app.use(express.static(path.join(__dirname, '..', '..', '/frontend/dist')));
+
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', '..', 'frontend', 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '..', '..', 'frontend', 'dist', 'index.html'));
 });
 
-// Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

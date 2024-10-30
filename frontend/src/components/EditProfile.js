@@ -17,6 +17,7 @@ class EditProfile extends Component {
       showProfileImage: false,
       showPassword: false,
     };
+    this.fileInputRef = React.createRef();
   }
 
   handleChange = (e) => {
@@ -30,62 +31,94 @@ class EditProfile extends Component {
     }));
   };
 
-  handleSubmit = async (e) => {
+  handleDrop = (e) => {
     e.preventDefault();
-    const { user } = this.props; 
-    const userId = this.extractUserIdFromURL(); 
-    const { formData } = this.state;
-
-    if (!userId) {
-      this.setState({ error: 'User ID is missing.' });
-      return;
-    }
-
-    if (formData.password && formData.password === user.password) {
-      this.setState({ error: 'New password must not match the old password.' });
-      return;
-    }
-
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      this.setState({ error: 'Passwords do not match.' });
-      return;
-    }
-
-    const updatedData = {};
-    if (this.state.showUsername && formData.username) updatedData.username = formData.username;
-    if (this.state.showProfileImage && formData.profileImage) updatedData.profileImage = formData.profileImage;
-    if (this.state.showPassword && formData.password) {
-      updatedData.password = formData.password; 
-      updatedData.oldPassword = user.password; 
-    }
-
-    try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedData), 
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
-      }
-
-      const updatedUser = await response.json();
-      this.props.onSave(updatedUser); 
-
-      const messages = [];
-      if (this.state.showUsername && formData.username) messages.push('Username updated!');
-      if (this.state.showProfileImage && formData.profileImage) messages.push('Profile Image updated!');
-      if (this.state.showPassword && formData.password) messages.push('Password updated!');
-
-      this.setState({ updateMessage: messages.join(' ') });
-    } catch (error) {
-      console.error(error.message);
-      this.setState({ error: 'Error updating user profile. Please try again.' });
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        this.setState((prevState) => ({
+          formData: {
+            ...prevState.formData,
+            profileImage: reader.result, // Use the image as the profile image
+          },
+          error: '',
+        }));
+      };
+      reader.readAsDataURL(file); // Read the file as a Data URL
     }
   };
+
+  handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  handleSubmit = async (e) => {
+  e.preventDefault();
+  const { user } = this.props; 
+  const userId = this.extractUserIdFromURL(); 
+  const { formData } = this.state;
+
+  if (!userId) {
+    this.setState({ error: 'User ID is missing.' });
+    return;
+  }
+
+  if (formData.profileImage && !formData.profileImage.startsWith('http') && !formData.profileImage.startsWith('data:image/')) {
+    this.setState({ error: 'Profile image must be a valid URL or a base64 string.' });
+    return;
+  }
+
+  if (formData.password && formData.password === user.password) {
+    this.setState({ error: 'New password must not match the old password.' });
+    return;
+  }
+
+  if (formData.password && formData.password !== formData.confirmPassword) {
+    this.setState({ error: 'Passwords do not match.' });
+    return;
+  }
+
+  const updatedData = {};
+  if (this.state.showUsername && formData.username) updatedData.username = formData.username;
+  if (this.state.showProfileImage && formData.profileImage) updatedData.profileImage = formData.profileImage;
+  if (this.state.showPassword && formData.password) {
+    updatedData.password = formData.password; 
+    updatedData.oldPassword = user.password; 
+  }
+
+  this.setState({ loading: true });
+
+  try {
+    const response = await fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedData), 
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to update profile');
+    }
+
+    const updatedUser = await response.json();
+    this.props.onSave(updatedUser); 
+    this.props.fetchData(userId); // Reload user data after saving
+
+    const messages = [];
+    if (this.state.showUsername && formData.username) messages.push('Username updated!');
+    if (this.state.showProfileImage && formData.profileImage) messages.push('Profile Image updated!');
+    if (this.state.showPassword && formData.password) messages.push('Password updated!');
+
+    this.setState({ updateMessage: messages.join(' '), loading: false });
+  } catch (error) {
+    console.error(error.message);
+    this.setState({ error: 'Error updating user profile. Please try again.', loading: false });
+  }
+};
 
   extractUserIdFromURL() {
     const pathSegments = window.location.pathname.split('/');
@@ -102,19 +135,53 @@ class EditProfile extends Component {
   handleDeleteProfile = async () => {
     const userId = this.extractUserIdFromURL();
     try {
-      const response = await fetch(`/api/users/${userId}`, {
-        method: 'DELETE',
-      });
+        // Step 1: Fetch the current user's data to get their friends
+        const userResponse = await fetch(`/api/users/${userId}`);
+        const currentUser = await userResponse.json();
 
-      if (!response.ok) {
-        throw new Error('Failed to delete profile');
-      }
+        // Check if the current user exists
+        if (!currentUser) {
+            throw new Error('User not found');
+        }
 
-      alert('Profile deleted successfully.'); // Notify the user
-      // Optionally redirect to another page
+        // Step 2: Unfriend the current user from all friends
+        const friends = currentUser.friends || [];
+        for (const friendId of friends) {
+            await fetch(`/api/users/${friendId}/removeFriend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ friendId: userId }), // Send the current user's ID to unfriend
+            });
+        }
+
+        // Step 3: Fetch the user's playlists to get the playlist IDs for deletion
+        const playlistsResponse = await fetch(`/api/users/${userId}/playlists`);
+        const playlists = await playlistsResponse.json();
+
+        // Delete each playlist associated with the user
+        for (const playlist of playlists) {
+            await fetch(`/api/playlists/${playlist._id}`, {
+                method: 'DELETE',
+            });
+        }
+
+        // Now delete the user profile
+        const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to delete profile');
+        }
+
+        alert('Profile and associated data deleted successfully.'); // Notify the user
+        this.props.onLogout(); // Log out the user
+        this.props.navigate('/'); // Redirect to home or another page
     } catch (error) {
-      console.error(error.message);
-      this.setState({ error: 'Error deleting profile. Please try again.' });
+        console.error(error.message);
+        this.setState({ error: 'Error deleting profile. Please try again.' });
     }
   };
 
@@ -141,13 +208,28 @@ class EditProfile extends Component {
             {this.state.showProfileImage ? 'Hide Profile Image' : 'Edit Profile Image'}
           </button>
           {this.state.showProfileImage && (
-            <input
-              type="text"
-              name="profileImage"
-              placeholder="Profile Image URL"
-              value={formData.profileImage}
-              onChange={this.handleChange}
-            />
+            <>
+              <div
+                className="profile-image-dropzone"
+                onDrop={this.handleDrop}
+                onDragOver={this.handleDragOver}
+                style={{
+                  border: '2px dashed #ccc',
+                  padding: '20px',
+                  textAlign: 'center',
+                  marginBottom: '10px',
+                }}
+              >
+                <p>Drag and drop an image here</p>
+              </div>
+              <input
+                type="text"
+                name="profileImage"
+                placeholder="Profile Image URL"
+                value={formData.profileImage}
+                onChange={this.handleChange}
+              />
+            </>
           )}
 
           <button type="button" onClick={() => this.toggleField('showPassword')}>

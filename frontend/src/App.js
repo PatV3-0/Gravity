@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Home from './pages/Home';
 import ProfilePageWithParams from './pages/Profile'; 
@@ -7,12 +7,12 @@ import Playlist from './pages/Playlist';
 import Library from './pages/Library';
 import About from './pages/About';
 import SplashPage from './pages/SplashPage';
-import './index.css';
-import { useUser } from './UserContext'; // Import useUser
+import { useUser } from './userContext'; // Import useUser
 
-const App = () => {
+const AppRoutes = () => {
   const { currentUser, setCurrentUser } = useUser(); 
   const [users, setUsers] = React.useState([]);
+  const location = useLocation();
 
   React.useEffect(() => {
     // Example: Fetch users and set currentUser
@@ -38,8 +38,8 @@ const App = () => {
   };
 
   return (
-    <Router>
-      <Header />
+    <div>
+      {location.pathname !== '/' && <Header />} {/* Conditionally render Header */}
       <Routes>
         <Route path="/" element={<SplashPage handleLogin={handleLogin} />} />
         <Route path="/home" element={<Home />} />
@@ -56,9 +56,17 @@ const App = () => {
           path="/playlists/:id" 
           element={<Playlist currentUser={currentUser} />} 
         />
-        <Route path="/library" element={<Library />} />
+        <Route path="/library/:userId" element={<Library />} />
         <Route path="/about" element={<About />} />
       </Routes>
+    </div>
+  );
+};
+
+const App = () => {
+  return (
+    <Router>
+      <AppRoutes />
     </Router>
   );
 };

@@ -27,7 +27,13 @@ class CommentsList extends Component {
         throw new Error('Failed to fetch comments');
       }
       const comments = await response.json();
-      this.setState({ comments, loading: false });
+    
+      // Check if comments have changed before setting state
+      if (JSON.stringify(comments) !== JSON.stringify(this.state.comments)) {
+        this.setState({ comments, loading: false });
+      } else {
+        this.setState({ loading: false }); // Just stop loading
+      }
     } catch (error) {
       console.error("Error fetching comments:", error);
       this.setState({ error: 'Failed to fetch comments', loading: false });

@@ -13,49 +13,71 @@ class Comment extends Component {
   }
 
   fetchCommentDetails = async () => {
-  const { comment } = this.props;
-  
-  try {
-    const response = await fetch(`/comments/${comment}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch comment details');
-    }
-    const commentDetails = await response.json();
-    this.setState({ commentDetails, loading: false });
+    const { comment } = this.props;
+    const commentId = comment._id || comment.id;
 
-    // Fetch user details if a user is present
-    if (commentDetails.user) {
-      this.fetchUserDetails(commentDetails.user);
+    try {
+      const response = await fetch(`/api/comments/${commentId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch comment details');
+      }
+      const commentDetails = await response.json();
+      this.setState({ commentDetails, loading: false });
+
+      // Fetch user details if a user is present
+      if (commentDetails.user) {
+        this.fetchUserDetails(commentDetails.user);
+      }
+    } catch (error) {
+      console.error("Error fetching comment details:", error);
+      this.setState({ error: 'Failed to fetch comment details', loading: false });
     }
-  } catch (error) {
-    console.error("Error fetching comment details:", error);
-    this.setState({ error: 'Failed to fetch comment details', loading: false });
-  }
-};
+  };
 
   fetchUserDetails = async (userId) => {
-  const url = `../api/users/${userId}`;
+    const url = `/api/users/${userId}`;
 
-  try {
-    const response = await fetch(url);
-    
-    // Check if response is OK
-    if (!response.ok) {
-      throw new Error('Failed to fetch user details');
+    try {
+      const response = await fetch(url);
+
+      // Check if response is OK
+      if (!response.ok) {
+        throw new Error('Failed to fetch user details');
+      }
+
+      const userDetails = await response.json();
+
+      if (!userDetails) {
+        // User does not exist, delete the comment
+        await this.deleteComment();
+      } else {
+        this.setState({ userDetails });
+      }
+    } catch (error) {
+      await this.deleteComment();
     }
+  };
 
-    // Check the Content-Type header
-    const contentType = response.headers.get("content-type");
-    // Attempt to parse the JSON
-    const userDetails = await response.json();
-    this.setState({ userDetails });
-  } catch (error) {
-    console.error("Error fetching user details:", error);
-    this.setState({ error: 'Failed to fetch user details' });
-  }
-};
+  deleteComment = async () => {
+    const { comment } = this.props;
+    const commentId = comment._id || comment.id;
 
+    try {
+      const response = await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
 
+      if (!response.ok) {
+        throw new Error('Failed to delete comment');
+      }
+
+      this.setState({ commentDetails: null }); // Clear comment details
+      console.log("Comment deleted successfully");
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      this.setState({ error: 'Failed to delete comment' });
+    }
+  };
 
   render() {
     const { comment } = this.props;
@@ -71,9 +93,13 @@ class Comment extends Component {
       return <p>Error: {error}</p>;
     }
 
+    if (!commentDetails) {
+      return null;
+    }
+
     return (
       <div className="comment-component">
-        <p><strong>{userDisplay}</strong>: {commentDetails?.text || 'No comment text available.'}</p>
+        <p><strong>{userDisplay}</strong>: {commentDetails.text || 'No comment text available.'}</p>
       </div>
     );
   }

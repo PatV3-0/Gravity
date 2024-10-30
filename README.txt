@@ -4,7 +4,7 @@ Build the Docker image:
 	docker build -t u17104361d1 .
 
 Run the Docker container using the docker run command:
-	docker run -p 80:80 u17104361d1
+	docker run -p 80:3000 u17104361d1
 
 * Optional: Verify that Container is running:
 	docker ps

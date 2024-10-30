@@ -12,7 +12,8 @@ class PlaylistPage extends Component {
     this.state = {
       playlist: { _id: playlistId, comments: [] },
       songs: [],
-      refreshCommentsKey: 0, // State to trigger comment refresh
+      refreshCommentsKey: 0, 
+      saved: false,
     };
   }
 
@@ -24,8 +25,8 @@ class PlaylistPage extends Component {
   }
 
   handleAddComment = async (text) => {
-    const { currentUser } = this.props; // Ensure currentUser is passed as a prop
-
+    const { currentUser } = this.props; 
+    console.log(currentUser.admin);
     if (!currentUser || !currentUser._id) {
       console.error("Current user is not defined or does not have an ID.");
       return;
@@ -48,7 +49,6 @@ class PlaylistPage extends Component {
         throw new Error('Failed to add comment');
       }
 
-      // Trigger re-fetch of comments by updating the refreshCommentsKey
       this.setState((prevState) => ({
         refreshCommentsKey: prevState.refreshCommentsKey + 1
       }));
@@ -58,17 +58,122 @@ class PlaylistPage extends Component {
     }
   };
 
+  handleEditPlaylist = async (updatedData) => {
+    const { currentUser } = this.props; // Ensure currentUser is passed as a prop
+
+    if (!currentUser || !currentUser._id) {
+      console.error("Current user is not defined or does not have an ID.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/playlists/${this.state.playlist._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...updatedData,
+          updatedBy: currentUser._id // Optional: keep track of who edited
+        }),
+      });
+
+      if (response.ok) {
+        const updatedPlaylist = await response.json();
+        this.setState({ playlist: updatedPlaylist });
+      } else {
+        console.error('Failed to update playlist:', response.statusText);
+      }
+    } catch (error) {
+      console.error("Error updating playlist:", error);
+    }
+  };
+
+  handleDeletePlaylist = async () => {
+    const { currentUser } = this.props;
+
+    if (!currentUser || !currentUser._id) {
+      console.error("Current user is not defined or does not have an ID.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/playlists/${this.state.playlist._id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Redirect to another page or update state to reflect deletion
+        console.log('Playlist deleted successfully');
+        // For example, navigate to the home page
+        window.location.href = '/home'; // Adjust the redirect as necessary
+      } else {
+        console.error('Failed to delete playlist:', response.statusText);
+      }
+    } catch (error) {
+      console.error("Error deleting playlist:", error);
+    }
+  };
+
+  handleSavePlaylist = async () => {
+  const { currentUser } = this.props;
+  const { playlist } = this.state;
+
+  if (!currentUser || !currentUser._id) {
+    console.error("Current user is not defined or does not have an ID.");
+    return;
+  }
+
+  if (currentUser._id === playlist.createdBy) {
+    console.warn("You cannot save your own playlist.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/playlists/${playlist._id}/save`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: currentUser._id }),
+    });
+
+    if (response.ok) {
+      const savedPlaylist = await response.json();
+      this.setState({ saved: true });
+      console.log("Playlist saved successfully:", savedPlaylist);
+    } else {
+      const errorData = await response.json();
+      console.error('Failed to save playlist:', errorData.message);
+    }
+  } catch (error) {
+    console.error("Error saving playlist:", error);
+  }
+};
+
+
   render() {
-    const { playlist, songs, refreshCommentsKey } = this.state;
+    const { playlist, songs, refreshCommentsKey, saved } = this.state;
+    const { currentUser } = this.props;
+
+    const isOwner = currentUser && currentUser._id === playlist.createdBy;
+    const isAdmin = currentUser && currentUser.admin === 'true'; 
 
     return (
       <div className="playlist-page">
         <Playlist
           playlist={playlist}
           songs={songs}
-          onEdit={() => console.log('Edit playlist')}
+          onEdit={() => this.handleEditPlaylist()}
+          onDelete={this.handleDeletePlaylist}
+          canEdit={isOwner || isAdmin}
+          canDelete={isOwner || isAdmin}
         />
-        {/* Pass the refreshCommentsKey to force a re-render of CommentsList */}
+        {!isOwner && !saved && (
+          <button onClick={this.handleSavePlaylist}>Save Playlist</button>
+        )}
+        {saved && <p>Playlist saved!</p>}
+        
         <CommentsList key={refreshCommentsKey} playlistId={playlist._id} /> 
         <AddComment onAdd={this.handleAddComment} />
       </div>
