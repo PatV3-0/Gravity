@@ -1,22 +1,27 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useUser } from '../userContext'; // Import useUser
+import { useUser } from '../userContext';
+import Logo from '../../public/assets/images/logo.png';
 
 const Header = () => {
-  const { currentUser } = useUser(); // Get current user from context
+  const { currentUser } = useUser();
 
   return (
     <header className="header">
       <nav>
+        <Link to="/home">
+          <img className="logo" src={Logo} alt="Home Link"/>
+        </Link>
+        <Link to="/home">
+          <h3>Gravity</h3>
+        </Link>
         <ul className="nav-list">
-          <li><Link to="/home">Home</Link></li>
+          {currentUser && (
+            <li><Link to={`/library/${currentUser._id}`}>Library</Link></li>
+          )}
           {currentUser && (
             <li><Link to={`/profile/${currentUser._id}`}>Profile</Link></li>
           )}
-          {currentUser && ( // Only show Library link if the user is logged in
-            <li><Link to={`/library/${currentUser._id}`}>Library</Link></li>
-          )}
-          <li><Link to="/">Login</Link></li>
         </ul>
       </nav>
     </header>

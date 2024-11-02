@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import './EditProfile.css';
 
 class EditProfile extends Component {
   constructor(props) {
@@ -65,17 +64,22 @@ class EditProfile extends Component {
     return;
   }
 
-  if (formData.profileImage && !formData.profileImage.startsWith('http') && !formData.profileImage.startsWith('data:image/')) {
-    this.setState({ error: 'Profile image must be a valid URL or a base64 string.' });
+  const { profileImage, password, confirmPassword } = formData;
+
+  if (
+    profileImage && 
+    !/^data:image\/|http/.test(profileImage)
+  ) {
+    this.setState({ error: 'Profile image must be a valid URL or base64-encoded string.' });
     return;
   }
 
-  if (formData.password && formData.password === user.password) {
+  if (password && password === user.password) {
     this.setState({ error: 'New password must not match the old password.' });
     return;
   }
 
-  if (formData.password && formData.password !== formData.confirmPassword) {
+  if (password && password !== confirmPassword) {
     this.setState({ error: 'Passwords do not match.' });
     return;
   }
@@ -194,7 +198,16 @@ class EditProfile extends Component {
           <button type="button" onClick={() => this.toggleField('showUsername')}>
             {this.state.showUsername ? 'Hide Username' : 'Edit Username'}
           </button>
-          {this.state.showUsername && (
+          <button type="button" onClick={() => this.toggleField('showProfileImage')}>
+            {this.state.showProfileImage ? 'Hide Profile Image' : 'Edit Profile Image'}
+          </button>
+          <button type="button" onClick={() => this.toggleField('showPassword')}>
+            {this.state.showPassword ? 'Hide Password' : 'Edit Password'}
+          </button>
+          <button type="submit">Save Changes</button>
+          <button type="button" onClick={this.handleDeleteProfile}>Delete Profile</button>
+        </form>
+        {this.state.showUsername && (
             <input
               type="text"
               name="username"
@@ -203,10 +216,24 @@ class EditProfile extends Component {
               onChange={this.handleChange}
             />
           )}
-
-          <button type="button" onClick={() => this.toggleField('showProfileImage')}>
-            {this.state.showProfileImage ? 'Hide Profile Image' : 'Edit Profile Image'}
-          </button>
+          {this.state.showPassword && (
+            <>
+              <input
+                type="password"
+                name="password"
+                placeholder="New Password"
+                value={formData.password}
+                onChange={this.handleChange}
+              />
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirm New Password"
+                value={formData.confirmPassword}
+                onChange={this.handleChange}
+              />
+            </>
+          )}
           {this.state.showProfileImage && (
             <>
               <div
@@ -231,32 +258,6 @@ class EditProfile extends Component {
               />
             </>
           )}
-
-          <button type="button" onClick={() => this.toggleField('showPassword')}>
-            {this.state.showPassword ? 'Hide Password' : 'Edit Password'}
-          </button>
-          {this.state.showPassword && (
-            <>
-              <input
-                type="password"
-                name="password"
-                placeholder="New Password"
-                value={formData.password}
-                onChange={this.handleChange}
-              />
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Confirm New Password"
-                value={formData.confirmPassword}
-                onChange={this.handleChange}
-              />
-            </>
-          )}
-
-          <button type="submit">Save Changes</button>
-          <button type="button" onClick={this.handleDeleteProfile}>Delete Profile</button>
-        </form>
         {error && <div className="error">{error}</div>}
         {updateMessage && <div className="update-message">{updateMessage}</div>}
       </div>

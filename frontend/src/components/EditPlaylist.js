@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData, onDelete }) => {
+const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData }) => {
   const navigate = useNavigate();
   const [playlistName, setPlaylistName] = useState(playlist ? playlist.name : '');
   const [playlistDescription, setPlaylistDescription] = useState(playlist ? playlist.description : '');
@@ -34,7 +34,23 @@ const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData, onDelete 
     }
   };
 
-  // Handle form submission for updating the playlist
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      const file = files[0];
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPlaylistArt(reader.result); // Update playlistArt with the dropped image
+      };
+      reader.readAsDataURL(file); // Read the file as a Data URL
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault(); // Prevent default behavior to allow drop
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -69,7 +85,6 @@ const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData, onDelete 
     }
   };
 
-  // Handle playlist deletion
   const handleDelete = async () => {
     const confirmed = window.confirm("Are you sure you want to delete this playlist?");
     if (confirmed) {
@@ -110,14 +125,27 @@ const EditPlaylist = ({ playlist, onSave, onDelete, fetchPlaylistData, onDelete 
           value={genre}
           onChange={handleChange}
         />
+        <div
+          className="playlist-art-dropzone"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          style={{
+            border: '2px dashed #ccc',
+            padding: '20px',
+            textAlign: 'center',
+            marginBottom: '10px',
+          }}
+        >
+          <p>Drag and drop an image here for Playlist Art</p>
+        </div>
         <input
           type="text"
           name="playlistArt"
-          placeholder="Playlist Art URL"
+          placeholder="Playlist Art URL (optional)"
           value={playlistArt}
           onChange={handleChange}
         />
-        <button type="submit">Save</button>
+        <button className="submit" type="submit">Save</button>
       </form>
       <button onClick={handleDelete} className="delete-button">
         Delete Playlist

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useUser } from '../userContext';
-import './CreatePlaylist.css';
 
 const CreatePlaylist = ({ onCreate }) => {
   const { currentUser } = useUser();
@@ -89,14 +88,14 @@ const CreatePlaylist = ({ onCreate }) => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          <div>
+          <div className="selectDiv">
             <button type="button" onClick={() => setIsGenresExpanded(!isGenresExpanded)}>
               {isGenresExpanded ? 'Hide Genres' : 'Select Genres'}
             </button>
             {isGenresExpanded && (
               <div className="genre-selection">
                 {genres.map((genre, index) => (
-                  <div key={index}>
+                  <div className="sel" key={index}>
                     <label>
                       <input
                         type="checkbox"
@@ -117,7 +116,7 @@ const CreatePlaylist = ({ onCreate }) => {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
           />
-          <button type="submit">Create</button>
+          <button className="sub" type="submit">Create</button>
         </form>
       )}
     </div>

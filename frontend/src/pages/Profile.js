@@ -7,6 +7,7 @@ import CreatePlaylist from '../components/CreatePlaylist';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useUser } from '../userContext';
 import fallbackImage from '../components/user.png';
+import backsplash from '../../public/assets/images/backing.png';
 
 const ProfilePage = (props) => {
   const { currentUser, setCurrentUser } = useUser();
@@ -15,7 +16,7 @@ const ProfilePage = (props) => {
 
   const [user, setUser] = useState({});
   const [playlists, setPlaylists] = useState([]);
-  const [savedPlaylists, setSavedPlaylists] = useState([]); // State for saved playlists
+  const [savedPlaylists, setSavedPlaylists] = useState([]); 
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -118,13 +119,12 @@ const ProfilePage = (props) => {
   if (error) return <div>{error}</div>;
 
   return (
-  <div className="profile-page">
+  <div className="profile-page" style={{ backgroundImage: `url(${backsplash})` }}>
     <div className="user-image">
-      {/* Display user image or fallback image */}
       <img
         src={user.profileImage || fallbackImage}
         alt={`${user.name || 'User'}'s profile`}
-        onError={(e) => { e.target.src = fallbackImage }} // Fallback on error
+        onError={(e) => { e.target.src = fallbackImage }}
         style={{ width: '300px', height: '300px' }}
       />
     </div>
@@ -141,13 +141,12 @@ const ProfilePage = (props) => {
         {showEditProfile && (
           <EditProfile user={user} onSave={handleSaveProfile} />
         )}
-        <PlaylistsList playlists={playlists} title="Playlists" />
-        <PlaylistsList playlists={savedPlaylists} title="Saved Playlists" />
-        
         {/* Show CreatePlaylist only if the user has no playlists */}
         {isCurrentUser && playlists.length === 0 && (
           <CreatePlaylist onCreate={handleCreatePlaylist} />
         )}
+        <PlaylistsList playlists={playlists} title="Created Playlists" />
+        <PlaylistsList playlists={savedPlaylists} title="Saved Playlists" />
         
         <FollowersFollowing following={following} followers={followers} />
       </>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import WelcomeBack from '../../public/assets/images/WelcomeBack.png';
+import backsplash from '../../public/assets/images/backsplash.png';
 
 const SplashPage = (props) => {
   const navigate = useNavigate();
@@ -11,7 +13,7 @@ const SplashPage = (props) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [showForms, setShowForms] = useState(false); // New state for form visibility
+  const [showForms, setShowForms] = useState(false);
 
   const profileImages = [
     "https://thedakotaplanet.com/wp-content/uploads/2022/09/thumbnail_IMG_2981-900x900.png",
@@ -76,7 +78,7 @@ const SplashPage = (props) => {
   };
 
   const handleSignup = async () => {
-    const imageIndex = Math.floor(Date.now() / 1000) % profileImages.length; // Cyclic index based on timestamp
+    const imageIndex = Math.floor(Date.now() / 1000) % profileImages.length;
     const selectedProfileImage = profileImages[imageIndex];
     
     const url = '/api/signup';
@@ -112,25 +114,40 @@ const SplashPage = (props) => {
   };
 
   return (
-    <div className="splash-page">
-      <div className="form-container">
-        {error && <p className="error">{error}</p>}
-        
-        {/* Button to show forms */}
+    <div className="splash-page" style={{ backgroundImage: `url(${backsplash})` }}>
+      <div className="content-container">
         {!showForms && (
-          <button className="buttonSplash" onClick={() => setShowForms(true)}>
-            Join the Fun
-          </button>
+          <div className="intro-content">
+            <h1>Welcome to Gravity!</h1>
+            <p>Where your music world comes alive. Literally!</p>
+            <p>Dive into Gravity, the ultimate music experience designed just for you. Whether you're here to discover new sounds, connect with friends, or curate playlists that match your every mood, Gravity brings the music to life.</p>
+            <div>
+              <h3>What can you do?</h3>
+              <ul>
+                <li><p><b>Discover New Beats:</b> Explore fresh tunes and timeless classics tailored to your taste.</p></li>
+                <li><p><b>Connect with Friends:</b> Share playlists, follow friends, and see what they’re jamming to.</p></li>
+                <li><p><b>Create & Share:</b> Build playlists for every moment, from epic workouts to late-night vibes.</p></li>
+                <li><p><b>Personalized Recommendations:</b> Gravity learns what you love and serves up the perfect soundtrack every time.</p></li>
+              </ul>
+            </div>
+            <h3>Join Us and Feel the Music</h3>
+            <p>Gravity is more than just a music app; it’s your gateway to a universe of sound. Whether you're a solo listener or a social butterfly, we’ve got the right tune for you. Join our community of music lovers today, and let’s make every moment unforgettable.</p>
+            <button className="buttonSplash" onClick={() => setShowForms(true)}>
+              Join the Fun
+            </button>
+          </div>
         )}
-
-        {/* Show login/register forms if showForms is true */}
         {showForms && (
-          <>
+          <div className="form-container">
+            {error && <p className="error">{error}</p>}
+            
             {isLogin ? (
-              <>
+              <div className="login-form">
                 <h2>Login</h2>
                 <div className="insideLogin">
-                  <div className="logoLogin"></div>
+                  <div className="logoLogin">
+                    <img src={WelcomeBack} alt="Welcome Back" />
+                  </div>
                   <form onSubmit={handleSubmit}>
                     <div className="fields">
                       <label htmlFor="email">Email:</label>
@@ -158,12 +175,12 @@ const SplashPage = (props) => {
                     </div>
                     <button type="submit" className="buttonSplash">Login</button>
                   </form>
-                  <p>Don&#39;t have an account?</p>
+                  <p>Don't have an account?</p>
                   <button className="buttonSplash" onClick={handleToggle}>Sign Up</button>
                 </div>
-              </>
+              </div>
             ) : (
-              <>
+              <div className="signup-form">
                 <h2>Register</h2>
                 <div className="insidesignup">
                   <form onSubmit={handleSubmit}>
@@ -243,9 +260,9 @@ const SplashPage = (props) => {
                   <p>Already have an account?</p>
                   <button className="buttonSplash" onClick={handleToggle}>Log In</button>
                 </div>
-              </>
+              </div>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -4,13 +4,13 @@ import PropTypes from 'prop-types';
 
 class CommentsList extends Component {
   state = {
-    comments: [], // To store the fetched comments
-    loading: true, // To track loading state
-    error: null // To track any errors
+    comments: [],
+    loading: true, 
+    error: null
   };
 
   componentDidMount() {
-    this.fetchComments(); // Fetch comments when the component mounts
+    this.fetchComments(); 
   }
 
   fetchComments = async () => {
@@ -28,7 +28,7 @@ class CommentsList extends Component {
       }
       const comments = await response.json();
     
-      // Check if comments have changed before setting state
+      
       if (JSON.stringify(comments) !== JSON.stringify(this.state.comments)) {
         this.setState({ comments, loading: false });
       } else {
@@ -54,6 +54,7 @@ class CommentsList extends Component {
     return (
       <div className="comments-list">
       <h3>Comments</h3>
+      <div className="comments-all">
         {comments.length > 0 ? (
           comments.map((comment, index) => (
             <Comment key={comment._id || index} comment={comment} />
@@ -61,6 +62,7 @@ class CommentsList extends Component {
         ) : (
           <p>No comments available.</p>
         )}
+        </div>
       </div>
     );
   }
@@ -68,7 +70,7 @@ class CommentsList extends Component {
 
 // Prop validation
 CommentsList.propTypes = {
-  playlistId: PropTypes.string.isRequired, // Ensure playlistId is a string
+  playlistId: PropTypes.string.isRequired,
 };
 
 export default CommentsList;

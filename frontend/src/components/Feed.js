@@ -2,8 +2,7 @@ import React, { Component } from 'react';
 import SearchInput from '../components/SearchInput';
 import PlaylistPreview from './PlaylistPreview';
 import SongPreview from './SongPreview';
-import UserPreview from './UserPreview';
-import './Feed.css';
+import UserPreviewP from './UserPreviewP';
 
 class Feed extends Component {
   static defaultProps = {
@@ -22,55 +21,69 @@ class Feed extends Component {
     filteredUsers: [],
     currentPlaylistIndex: 0,
     currentUserIndex: 0,
+    currentSection: 'songs', 
   };
 
   async componentDidMount() {
     try {
       const playlistResponse = await fetch('/api/playlists');
       const playlists = await playlistResponse.json();
-      this.setState({ playlists });
+      playlists.sort((a, b) => b._id.localeCompare(a._id));
 
       const songResponse = await fetch('/api/songs');
       const songs = await songResponse.json();
-      this.setState({ songs, filteredSongs: songs });
+      songs.sort((a, b) => b._id.localeCompare(a._id)); 
 
       const userResponse = await fetch('/api/users');
       const users = await userResponse.json();
-      this.setState({ users, filteredUsers: users });
+      users.sort((a, b) => b._id.localeCompare(a._id)); 
+
+      this.setState({ playlists, songs, filteredSongs: songs, users, filteredUsers: users });
     } catch (error) {
       console.error("Error fetching data:", error);
     }
   }
 
   handleSearch = (query) => {
-    const filteredPlaylists = this.state.playlists.filter(playlist =>
-      playlist.name && playlist.name.toLowerCase().includes(query.toLowerCase())
-    );
+  const isTagSearch = query.startsWith('#');
+  const lowerCaseQuery = query.toLowerCase();
+  const tagQuery = isTagSearch ? lowerCaseQuery.slice(1) : lowerCaseQuery; // Remove `#` only if it's a tag search
 
-    const filteredSongs = this.state.songs.filter(song => {
-      const titleMatch = song.title && song.title.toLowerCase().includes(query.toLowerCase());
-      const artistMatch = song.artist && song.artist.toLowerCase().includes(query.toLowerCase());
-      const albumMatch = song.album && song.album.toLowerCase().includes(query.toLowerCase());
-      const genreMatch = song.genre && song.genre.toLowerCase().includes(query.toLowerCase());
+  const filteredPlaylists = this.state.playlists.filter(playlist => {
+    const nameMatch = playlist.name && playlist.name.toLowerCase().includes(lowerCaseQuery);
+    const tagMatch = isTagSearch && playlist.tags && playlist.tags.some(tag => tag.toLowerCase() === tagQuery);
+    const genreMatch = !isTagSearch && playlist.genre && playlist.genre.some(genre => genre.toLowerCase().includes(lowerCaseQuery));
 
-      return titleMatch || artistMatch || albumMatch || genreMatch;
-    });
+    return nameMatch || tagMatch || genreMatch;
+  });
 
-    const filteredUsers = this.state.users.filter(user => {
-      const usernameMatch = user.username && user.username.toLowerCase().includes(query.toLowerCase());
-      const nameMatch = user.name && user.name.toLowerCase().includes(query.toLowerCase());
-      const lastNameMatch = user.surname && user.surname.toLowerCase().includes(query.toLowerCase()); 
-      
-      return usernameMatch || nameMatch || lastNameMatch;
-    });
+  const filteredSongs = this.state.songs.filter(song => {
+    const titleMatch = song.name && song.name.toLowerCase().includes(lowerCaseQuery);
+    const artistMatch = song.artist && song.artist.toLowerCase().includes(lowerCaseQuery);
+    const albumMatch = song.album && song.album.toLowerCase().includes(lowerCaseQuery);
+    const genreMatch = !isTagSearch && song.genre && song.genre.toLowerCase().includes(lowerCaseQuery);
+    const tagMatch = isTagSearch && song.tags && song.tags.some(tag => tag.toLowerCase() === tagQuery);
 
-    this.setState({
-      searchQuery: query,
-      filteredPlaylists,
-      filteredSongs,
-      filteredUsers
-    });
-  };
+    return titleMatch || artistMatch || albumMatch || genreMatch || tagMatch;
+  });
+
+  const filteredUsers = this.state.users.filter(user => {
+    const usernameMatch = user.username && user.username.toLowerCase().includes(lowerCaseQuery);
+    const nameMatch = user.name && user.name.toLowerCase().includes(lowerCaseQuery);
+    const lastNameMatch = user.surname && user.surname.toLowerCase().includes(lowerCaseQuery);
+
+    return usernameMatch || nameMatch || lastNameMatch;
+  });
+
+  this.setState({
+    searchQuery: query,
+    filteredPlaylists,
+    filteredSongs,
+    filteredUsers
+  });
+};
+
+
 
   handleCarousel = (type, direction) => {
     this.setState((prevState) => {
@@ -79,12 +92,15 @@ class Feed extends Component {
       const itemsToShow = type === 'Playlist' ? 3 : type === 'User' ? 4 : 8; 
       let newIndex = prevState[key] + direction;
 
-      // Adjusting bounds to prevent overflow
-      if (newIndex < 0) newIndex = 0; // Don't go below 0
+      if (newIndex < 0) newIndex = 0;
       if (newIndex >= totalItems - itemsToShow) newIndex = totalItems - itemsToShow; 
 
       return { [key]: newIndex };
     });
+  };
+
+  toggleSection = (section) => {
+    this.setState({ currentSection: section });
   };
 
   renderPlaylists() {
@@ -94,7 +110,7 @@ class Feed extends Component {
     return (
       <div className="carousel playlist-carousel" style={{ transform: `translateX(-${currentPlaylistIndex * (377 + 10)}px)` }}>
         {playlistsToRender.map((playlist, index) => (
-          <div className="carousel-item" key={`${playlist._id}-${index}`}>
+          <div className="carousel-item-Playlist" key={`${playlist._id}-${index}`}>
             <PlaylistPreview key={playlist._id} playlist={playlist} songs={this.state.songs} />
           </div>
         ))}
@@ -103,26 +119,29 @@ class Feed extends Component {
   }
 
   renderUsers() {
-    const usersToRender = this.state.filteredUsers;
-    const currentIndex = this.state.currentUserIndex;
+  const usersToRender = this.state.filteredUsers;
+  const currentIndex = this.state.currentUserIndex;
+  
+  const itemsToShow = 4; 
+  const totalItems = usersToRender.length;
 
-    return (
-      <div className="carousel user-carousel" style={{ transform: `translateX(-${(currentIndex * 25)}%)` }}>
-        {usersToRender.map((user, index) => (
-          <div className="carousel-item" key={`${user._id}-${index}`}>
-            <UserPreview user={user} />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  return (
+    <div className="carousel user-carousel" style={{ transform: `translateX(-${(currentIndex * (377 + 10))}px)` }}>
+      {usersToRender.map((user, index) => (
+        <div className="carousel-item" key={`${user._id}-${index}`}>
+          <UserPreviewP user={user} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
   renderSongs() {
     const songsToRender = this.state.searchQuery ? this.state.filteredSongs : this.state.songs;
 
     return (
-      <div className="song-carousel-container">
-        <div className="song-carousel">
+      <div className="song-carousel">
+        <div className="song-carousel-inside">
           {songsToRender.slice(0, 8).map((song, index) => (
             <div className="song-row" key={`${song._id}-${index}`}>
               <SongPreview song={song} className="song"/>
@@ -133,29 +152,70 @@ class Feed extends Component {
     );
   }
 
+  renderCurrentSection() {
+    switch (this.state.currentSection) {
+      case 'playlists':
+        return (
+          <div className="feed-section">
+            <SearchInput onSearch={this.handleSearch} />
+            <div className="carousel-container">
+              <button className="carousel-button previous" onClick={() => this.handleCarousel('Playlist', -1)}>Previous</button>
+              {this.renderPlaylists()}
+              <button className="carousel-button next" onClick={() => this.handleCarousel('Playlist', 1)}>Next</button>
+            </div>
+          </div>
+        );
+      case 'users':
+        return (
+          <div className="feed-section">
+            <SearchInput onSearch={this.handleSearch} />
+            <div className="carousel-container">
+              <button className="carousel-button previous" onClick={() => this.handleCarousel('User', -1)}>Previous</button>
+              {this.renderUsers()}
+              <button className="carousel-button next" onClick={() => this.handleCarousel('User', 1)}>Next</button>
+            </div>
+          </div>
+        );
+      case 'songs':
+        return (
+          <div className="feed-section">
+            <SearchInput onSearch={this.handleSearch} />
+            {this.renderSongs()}
+          </div>
+        );
+      default:
+        return null;
+    }
+  }
+
   render() {
-    return (
-      <div className="feed">
-        <h2>Feed</h2>
-        <SearchInput onSearch={this.handleSearch} />
-        <div className="feed-section">
-          <h3>Playlists</h3>
-          <button onClick={() => this.handleCarousel('Playlist', -1)}>Previous</button>
-          <button onClick={() => this.handleCarousel('Playlist', 1)}>Next</button>
-          {this.renderPlaylists()}
-        </div>
-        <div className="feed-section">
-          <h3>Users</h3>
-          <button onClick={() => this.handleCarousel('User', -1)}>Previous</button>
-          <button onClick={() => this.handleCarousel('User', 1)}>Next</button>
-          {this.renderUsers()}
-        </div>
-        <div className="feed-section">
-          <h3>Songs</h3>
-          {this.renderSongs()}
-        </div>
+    const { currentSection } = this.state;
+
+  return (
+    <div className="feed">
+      <div className="toggle-buttons">
+        <button 
+          onClick={() => this.toggleSection('songs')}
+          className={currentSection === 'songs' ? 'active-button' : ''}
+        >
+          Songs
+        </button>
+        <button 
+          onClick={() => this.toggleSection('playlists')}
+          className={currentSection === 'playlists' ? 'active-button' : ''}
+        >
+          Playlists
+        </button>
+        <button 
+          onClick={() => this.toggleSection('users')}
+          className={currentSection === 'users' ? 'active-button' : ''}
+        >
+          Users
+        </button>
       </div>
-    );
+      {this.renderCurrentSection()}
+    </div>
+  );
   }
 }
 

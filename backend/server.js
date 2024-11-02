@@ -216,8 +216,9 @@ app.put('/api/users/:userId', async (req, res) => {
     const updates = {};
     if (username) updates.username = username;
     if (profileImage) {
-      if (!profileImage.startsWith('http')) {
-        return res.status(400).json({ message: 'Profile image URL must start with http://' });
+      const isValidUrlOrBase64 = profileImage.startsWith('http') || profileImage.startsWith('data:image/');
+      if (!isValidUrlOrBase64) {
+        return res.status(400).json({ message: 'Profile image must be a valid URL or base64 string.' });
       }
       updates.profileImage = profileImage;
     }
@@ -230,7 +231,7 @@ app.put('/api/users/:userId', async (req, res) => {
     );
 
     if (!updatedUser.value) {
-      return res.status(204).json({ message: 'No changes were made.' });
+      return res.status(200).json({ message: 'No changes were made.' });
     }
 
     res.json(updatedUser.value);
@@ -360,10 +361,64 @@ app.delete('/api/comments/:commentId', async (req, res) => {
       return res.status(404).json({ message: 'Comment not found' });
     }
 
+    // Optionally, remove comment ID from playlist's comments array
+    await db.collection('playlists').updateOne(
+      { comments: new ObjectId(commentId) },
+      { $pull: { comments: new ObjectId(commentId) } }
+    );
+
     res.status(200).json({ message: 'Comment deleted successfully' });
   } catch (error) {
     console.error('Error deleting comment:', error);
     res.status(500).json({ message: 'Error deleting comment' });
+  }
+});
+
+app.post('/api/comments/:id/like', async (req, res) => {
+  const { id } = req.params;
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid comment ID format' });
+  }
+
+  try {
+    const result = await db.collection('comments').updateOne(
+      { _id: new ObjectId(id) },
+      { $inc: { likes: 1 } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    res.status(200).json({ message: 'Comment liked successfully' });
+  } catch (error) {
+    console.error('Error liking comment:', error);
+    res.status(500).json({ message: 'Error liking comment' });
+  }
+});
+
+app.post('/api/comments/:id/dislike', async (req, res) => {
+  const { id } = req.params;
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid comment ID format' });
+  }
+
+  try {
+    const result = await db.collection('comments').updateOne(
+      { _id: new ObjectId(id) },
+      { $inc: { dislikes: 1 } }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    res.status(200).json({ message: 'Comment disliked successfully' });
+  } catch (error) {
+    console.error('Error disliking comment:', error);
+    res.status(500).json({ message: 'Error disliking comment' });
   }
 });
 
@@ -574,11 +629,13 @@ app.post('/api/playlists/:playlistId/comments', async (req, res) => {
       user: new ObjectId(userId),
       text,
       date: new Date(),
+      likes: 0,        // Initialize likes
+      dislikes: 0,     // Initialize dislikes
     };
 
     const result = await db.collection('comments').insertOne(comment);
 
-    // Update the playlist to include the new comment
+    // Update the playlist to include the new comment's ID
     await db.collection('playlists').updateOne(
       { _id: new ObjectId(playlistId) },
       { $push: { comments: result.insertedId } }
@@ -592,13 +649,13 @@ app.post('/api/playlists/:playlistId/comments', async (req, res) => {
 });
 
 app.get('/api/comments/:id', async (req, res) => {
+  const { id } = req.params;
+
+  if (!ObjectId.isValid(id)) {
+    return res.status(400).json({ message: 'Invalid ID format' });
+  }
+
   try {
-    const { id } = req.params;
-
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid ID format' });
-    }
-
     const comment = await db.collection('comments').findOne({ _id: new ObjectId(id) });
 
     if (!comment) {
@@ -607,8 +664,8 @@ app.get('/api/comments/:id', async (req, res) => {
 
     res.status(200).json(comment);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching comment:', error);
+    res.status(500).json({ message: 'Error fetching comment' });
   }
 });
 

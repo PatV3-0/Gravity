@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import './SearchInput.css';
 
 class SearchInput extends Component {
   constructor(props) {
@@ -29,7 +28,7 @@ class SearchInput extends Component {
             value={this.state.query}
             onChange={this.handleChange}
           />
-          <button type="submit">Search</button>
+          <button type="submit">&#128269;</button>
         </form>
       </div>
     );

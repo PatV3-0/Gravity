@@ -1,5 +1,7 @@
 node_modules
-build
+frontend/dist
+backend/dist
+*.log
+*.md
 .dockerignore
 Dockerfile
-npm-debug.log

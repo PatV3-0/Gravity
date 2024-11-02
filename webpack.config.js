@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const FaviconsWebpackPlugin = require('favicons-webpack-plugin');
 
 module.exports = {
   mode: 'development',
@@ -18,7 +19,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader', 'postcss-loader'], // Include postcss-loader
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
       },
       {
         test: /\.(png|jpg|gif|svg)$/,
@@ -26,8 +27,9 @@ module.exports = {
           {
             loader: 'file-loader',
             options: {
-              name: '[name].[hash].[ext]',
-              outputPath: 'images/',
+              name: '[name].[hash].[ext]', // Keep the original name and add hash for cache-busting
+              outputPath: 'images/', // Images will be output here
+              publicPath: 'images/', // URL path for serving images
             },
           },
         ],
@@ -39,6 +41,12 @@ module.exports = {
       template: './frontend/public/index.html',
       filename: 'index.html',
       inject: 'body',
+    }),
+    new FaviconsWebpackPlugin({
+      logo: path.resolve(__dirname, 'frontend', 'public', 'assets', 'icon', 'favicon-96x96.png'),
+      prefix: 'assets/favicon/',
+      mode: 'webapp',
+      devMode: 'webapp',
     }),
   ],
   devServer: {

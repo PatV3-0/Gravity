@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import Playlist from '../components/Playlist';
 import CommentsList from '../components/Comments'; 
 import AddComment from '../components/AddComment';
+import backsplash from '../../public/assets/images/backing.png';
 
 class PlaylistPage extends Component {
   constructor(props) {
@@ -59,7 +60,7 @@ class PlaylistPage extends Component {
   };
 
   handleEditPlaylist = async (updatedData) => {
-    const { currentUser } = this.props; // Ensure currentUser is passed as a prop
+    const { currentUser } = this.props;
 
     if (!currentUser || !currentUser._id) {
       console.error("Current user is not defined or does not have an ID.");
@@ -74,7 +75,7 @@ class PlaylistPage extends Component {
         },
         body: JSON.stringify({
           ...updatedData,
-          updatedBy: currentUser._id // Optional: keep track of who edited
+          updatedBy: currentUser._id
         }),
       });
 
@@ -86,32 +87,6 @@ class PlaylistPage extends Component {
       }
     } catch (error) {
       console.error("Error updating playlist:", error);
-    }
-  };
-
-  handleDeletePlaylist = async () => {
-    const { currentUser } = this.props;
-
-    if (!currentUser || !currentUser._id) {
-      console.error("Current user is not defined or does not have an ID.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/playlists/${this.state.playlist._id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        // Redirect to another page or update state to reflect deletion
-        console.log('Playlist deleted successfully');
-        // For example, navigate to the home page
-        window.location.href = '/home'; // Adjust the redirect as necessary
-      } else {
-        console.error('Failed to delete playlist:', response.statusText);
-      }
-    } catch (error) {
-      console.error("Error deleting playlist:", error);
     }
   };
 
@@ -160,7 +135,7 @@ class PlaylistPage extends Component {
     const isAdmin = currentUser && currentUser.admin === 'true'; 
 
     return (
-      <div className="playlist-page">
+      <div className="playlist-page" style={{ backgroundImage: `url(${backsplash})` }}>
         <Playlist
           playlist={playlist}
           songs={songs}
@@ -168,14 +143,14 @@ class PlaylistPage extends Component {
           onDelete={this.handleDeletePlaylist}
           canEdit={isOwner || isAdmin}
           canDelete={isOwner || isAdmin}
+          onSave={this.handleSavePlaylist}
+          saved={saved}
+          currentUser={currentUser}
         />
-        {!isOwner && !saved && (
-          <button onClick={this.handleSavePlaylist}>Save Playlist</button>
-        )}
-        {saved && <p>Playlist saved!</p>}
-        
+        <div className="commentsGroup">
         <CommentsList key={refreshCommentsKey} playlistId={playlist._id} /> 
         <AddComment onAdd={this.handleAddComment} />
+        </div>
       </div>
     );
   }

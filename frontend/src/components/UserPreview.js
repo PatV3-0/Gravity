@@ -1,6 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; 
-import './UserPreview.css';
+import { useNavigate } from 'react-router-dom';
 import fallbackImage from './user.png';
 
 const UserPreview = ({ user }) => {
@@ -11,7 +10,7 @@ const UserPreview = ({ user }) => {
     name = 'No Name',
   } = user || {};
 
-  const userId = _id.$oid || _id; // Ensures correct ID format
+  const userId = _id.$oid || _id;
   const navigate = useNavigate();
 
   const handleViewProfile = () => {
@@ -28,7 +27,7 @@ const UserPreview = ({ user }) => {
           setTimeout(() => {
             e.target.onerror = null;
             e.target.src = fallbackImage;
-          }, 500); // Adds a 500ms delay before switching to fallback
+          }, 500);
         }}
       />
       <div className="user-details">

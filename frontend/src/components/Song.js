@@ -1,9 +1,19 @@
 import React from 'react';
 import { useUser } from '../userContext';
-import './Song.css';
 
 function Song(props) {
-  const { name, artist, album, genre, releaseYear, duration, id, fetchPlaylistData, onDelete } = props; // Accept fetchPlaylistData prop
+  const {
+    name,
+    artist,
+    album,
+    genre,
+    releaseYear,
+    duration,
+    id,
+    spotifyUrl,
+    fetchPlaylistData,
+    onDelete
+  } = props; 
   const { currentUser } = useUser(); 
 
   const handleDelete = async () => {
@@ -26,16 +36,30 @@ function Song(props) {
 
   return (
     <div className="song">
-      <h2 className="song-title">{name}</h2>
-      <p className="song-artist">Artist: {artist}</p>
-      {album && <p className="song-album">Album: {album}</p>}
-      {genre && <p className="song-genre">Genre: {genre}</p>}
-      {releaseYear && <p className="song-release-year">Release Year: {releaseYear}</p>}
-      <p className="song-duration">Duration: {duration}</p>
+      {spotifyUrl ? (
+        <iframe
+          style={{ borderRadius: '12px' }} 
+          src={spotifyUrl}
+          frameBorder="0"
+          allowFullScreen 
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+          title={name} 
+        ></iframe>
+      ) : (
+        <>
+          <h2 className="song-title">{name}</h2>
+          <p className="song-artist">Artist: {artist}</p>
+          {album && <p className="song-album">Album: {album}</p>}
+          {genre && <p className="song-genre">Genre: {genre}</p>}
+          {releaseYear && <p className="song-release-year">Release Year: {releaseYear}</p>}
+          <p className="song-duration">Duration: {duration}</p>
+        </>
+      )}
 
-      {currentUser?.admin && (
+      {currentUser?.admin === "true" && (
         <button className="delete-button" onClick={handleDelete}>
-          Delete
+          x
         </button>
       )}
     </div>

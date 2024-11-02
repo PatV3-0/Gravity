@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { useUser } from '../userContext'; // Assuming you have a UserContext
+import { useUser } from '../userContext'; 
 import Song from './Song';
 import AddSongToPlaylist from './AddSongToPlaylist';
 import EditPlaylist from './EditPlaylist';
 
-const Playlist = () => {
+const Playlist = ({onEdit, onDelete, canEdit, canDelete, onSave, saved }) => {
   const { id } = useParams(); 
   const { currentUser } = useUser();
   const [playlist, setPlaylist] = useState(null);
@@ -92,9 +92,27 @@ const Playlist = () => {
     setShowEditForm(false);
   };
 
-  const handleDelete = async (id) => {
-    console.log(`Deleting playlist with ID: ${id}`);
-  };
+  const handleDeletePlaylist = async () => {
+  if (!currentUser || !currentUser._id) {
+    console.error("Current user is not defined or does not have an ID.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`/api/playlists/${playlist._id}`, {
+      method: 'DELETE',
+    });
+
+    if (response.ok) {
+      console.log('Playlist deleted successfully');
+      window.location.href = '/home';
+    } else {
+      console.error('Failed to delete playlist:', response.statusText);
+    }
+  } catch (error) {
+    console.error("Error deleting playlist:", error);
+  }
+};
 
   const handleOnDragEnd = async (result) => {
     if (!result.destination) return;
@@ -104,8 +122,6 @@ const Playlist = () => {
     reorderedSongs.splice(result.destination.index, 0, movedSong);
 
     setSongs(reorderedSongs);
-
-    // Send reordered list to the server
     try {
       const songIds = reorderedSongs.map(song => song._id);
       await fetch(`/api/playlists/${playlist._id}/reorder-songs`, {
@@ -120,8 +136,7 @@ const Playlist = () => {
     }
   };
 
-  // Check if the current user is the owner of the playlist or an admin
-  const isOwnerOrAdmin = playlist?.createdBy === currentUser?._id || currentUser?.admin;
+  const isOwnerOrAdmin = playlist?.createdBy === currentUser?._id || currentUser?.admin === "true";
 
   if (loading) {
     return <div>Loading playlist...</div>;
@@ -132,21 +147,31 @@ const Playlist = () => {
 
   return (
     <div className="playlist-component">
+    <div className="top">
       {playlist.playlistArt && <img src={playlist.playlistArt} alt={`${playlist.name} cover`} style={{ width: '300px', height: '300px' }} onError={() => console.error("Image failed to load")} />}
+      <div className="title">
       <h2>{playlist.name}</h2>
-      <p>{playlist.description}</p>
-      {Array.isArray(playlist.tags) && playlist.tags.length > 0 && (  // Check if tags is an array
-        <p>
-          Tags: {playlist.tags.map(tag => `#${tag}`).join(', ')}
+      <p className="description">{playlist.description}</p>
+      {Array.isArray(playlist.genre) && playlist.genre.length > 0 && (
+        <p className="genre">
+          <b>Genre:</b> {playlist.genre.map(genre => `${genre}`).join(', ')}
         </p>
       )}
-
-      {isOwnerOrAdmin && (  // Use the new variable to conditionally render buttons
+      {Array.isArray(playlist.tags) && playlist.tags.length > 0 && (
+        <p className="tags">
+          <b>Tags:</b> {playlist.tags.map(tag => `#${tag}`).join(', ')}
+        </p>
+      )}
+      </div>
+      </div>
+      <div className="editAndAdd">
+      {isOwnerOrAdmin && (
         <>
-          <button onClick={handleEditPlaylistClick}>Edit Playlist</button>
-          <button onClick={handleAddSongClick}>Add Song</button>
+          <button onClick={handleEditPlaylistClick}>&#9998;</button>
+          <button className="addSong" onClick={handleAddSongClick}>&#43;</button>
         </>
       )}
+      </div>
 
       {showAddSongForm && (
         <AddSongToPlaylist
@@ -161,12 +186,12 @@ const Playlist = () => {
         <EditPlaylist
           playlist={playlist}
           onSave={handleSavePlaylist}  
-          onDelete={this.handleDeletePlaylist}
+          onDelete={handleDeletePlaylist}
           fetchPlaylistData={fetchPlaylistData}      
         />
       )}
-
-      <h3>Songs</h3>
+      <br/>
+      {!saved && <button className="save" onClick={onSave}>Save Playlist</button>}
       <DragDropContext onDragEnd={handleOnDragEnd}>
         <Droppable droppableId="songs">
           {(provided) => (
@@ -175,8 +200,8 @@ const Playlist = () => {
                 <Draggable key={song._id} draggableId={song._id} index={index}>
                   {(provided) => (
                     <li ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                      <Song key={song._id} id={song._id} name={song.name} artist={song.artist} album={song.album} genre={song.genre} releaseYear={song.releaseYear} duration={song.duration} fetchPlaylistData={fetchPlaylistData}/>
-                      {playlist?.createdBy === currentUser?._id && (
+                      <Song key={song._id} id={song._id} name={song.name} artist={song.artist} album={song.album} genre={song.genre} releaseYear={song.releaseYear} duration={song.duration} spotifyUrl={song.spotifyUrl} fetchPlaylistData={fetchPlaylistData}/>
+                      {isOwnerOrAdmin && (
                         <button onClick={() => handleRemoveSong(song._id)}>Remove</button>
                       )}
                     </li>

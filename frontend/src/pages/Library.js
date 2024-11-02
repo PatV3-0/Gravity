@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import PlaylistsList from '../components/PlaylistsList';
-import CreatePlaylist from '../components/CreatePlaylist'; // Import CreatePlaylist
+import CreatePlaylist from '../components/CreatePlaylist';
 import { useParams } from 'react-router-dom';
 import { useUser } from '../userContext';
+import backsplash from '../../public/assets/images/backing.png';
 
 const LibraryPage = () => {
   const { currentUser } = useUser(); 
@@ -25,7 +26,6 @@ const LibraryPage = () => {
     }
   };
 
-  // Function to handle creating a new playlist
   const handleCreatePlaylist = async(newPlaylist) => {
     await fetchPlaylists();
   };
@@ -35,16 +35,15 @@ const LibraryPage = () => {
   }, [userId]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div className="error">Loading...</div>;
   }
 
   if (error) {
-    return <div>{error}</div>;
+    return <div className="error">{error}</div>;
   }
 
   return (
-    <div className="library-page">
-      <h1>User Playlists</h1>
+    <div className="library-page" style={{ backgroundImage: `url(${backsplash})` }}>
       {currentUser && (
         <CreatePlaylist onCreate={handleCreatePlaylist} /> // Place CreatePlaylist at the top
       )}

@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import './AddSongToPlaylist.css';
 
 class AddSongToPlaylist extends Component {
   constructor(props) {
@@ -19,11 +18,13 @@ class AddSongToPlaylist extends Component {
       allSongs: [],
       isAddingNewSong: false,
       error: null, // New state for error handling
+      currentPlaylistSongs: [] // State to hold current playlist songs
     };
   }
 
   componentDidMount() {
     this.fetchSongs();
+    this.fetchCurrentPlaylistSongs(); // Fetch current playlist songs
   }
 
   fetchSongs = async () => {
@@ -34,6 +35,17 @@ class AddSongToPlaylist extends Component {
     } catch (error) {
       console.error('Error fetching songs:', error);
       this.setState({ error: 'Failed to fetch songs' }); // Set error state
+    }
+  };
+
+  fetchCurrentPlaylistSongs = async () => {
+    try {
+      const response = await fetch(`/api/playlists/${this.props.playlistId}/songs`);
+      const data = await response.json();
+      this.setState({ currentPlaylistSongs: data }); // Set current playlist songs
+    } catch (error) {
+      console.error('Error fetching playlist songs:', error);
+      this.setState({ error: 'Failed to fetch current playlist songs' }); // Set error state
     }
   };
 
@@ -57,28 +69,30 @@ class AddSongToPlaylist extends Component {
   };
 
   handleSelectSong = async (song) => {
-  const { allSongs } = this.state;
-  const isDuplicate = allSongs.some(existingSong => existingSong._id === song._id);
+    const { currentPlaylistSongs } = this.state;
+    
+    // Check for duplicates only if the playlist is not empty
+    const isDuplicate = currentPlaylistSongs.length > 0 && currentPlaylistSongs.some(existingSong => existingSong._id === song._id);
 
-  if (isDuplicate) {
-    alert('This song is already in the playlist.');
-    return;
-  }
+    if (isDuplicate) {
+      alert('This song is already in the playlist.');
+      return;
+    }
 
-  try {
-    await fetch(`/api/playlists/${this.props.playlistId}/add-song`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ songId: song._id }), 
-    });
-    this.props.onSongAdded(song);
-  } catch (error) {
-    console.error('Error adding song to playlist:', error);
-    this.setState({ error: 'Failed to add song to playlist' }); 
-  }
-};
+    try {
+      await fetch(`/api/playlists/${this.props.playlistId}/add-song`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ songId: song._id }), 
+      });
+      this.props.onSongAdded(song);
+    } catch (error) {
+      console.error('Error adding song to playlist:', error);
+      this.setState({ error: 'Failed to add song to playlist' }); 
+    }
+  };
 
   handleAddSong = async () => {
     const { songDetails, allSongs } = this.state;
@@ -137,15 +151,15 @@ class AddSongToPlaylist extends Component {
     return (
       <div className="add-song-container">
         <h3>Add Song to Playlist</h3>
-        {error && <p className="error">{error}</p>} {/* Display error message */}
+        <div className="search">
         <input
           type="text"
           placeholder="Search for songs"
           value={this.state.searchQuery}
           onChange={this.handleInputChange}
         />
-        <button type="button" onClick={this.handleSearch}>Search</button>
-
+        <button type="button" onClick={this.handleSearch}>&#128269;</button>
+        </div>
         <ul>
           {filteredSongs.map(song => (
             <li key={song._id} onClick={() => this.handleSelectSong(song)}>
@@ -155,7 +169,7 @@ class AddSongToPlaylist extends Component {
         </ul>
 
         {isAddingNewSong && (
-          <div>
+          <div className="adding">
             <h4>Add New Song</h4>
             <input name="title" placeholder="Title" value={songDetails.title} onChange={this.handleSongDetailsChange} />
             <input name="artist" placeholder="Artist" value={songDetails.artist} onChange={this.handleSongDetailsChange} />

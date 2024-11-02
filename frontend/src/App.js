@@ -7,7 +7,7 @@ import Playlist from './pages/Playlist';
 import Library from './pages/Library';
 import About from './pages/About';
 import SplashPage from './pages/SplashPage';
-import { useUser } from './userContext'; // Import useUser
+import { useUser } from './userContext';
 
 const AppRoutes = () => {
   const { currentUser, setCurrentUser } = useUser(); 
@@ -15,7 +15,6 @@ const AppRoutes = () => {
   const location = useLocation();
 
   React.useEffect(() => {
-    // Example: Fetch users and set currentUser
     const fetchUsers = async () => {
       try {
         const response = await fetch('/api/users');
@@ -30,16 +29,16 @@ const AppRoutes = () => {
   }, []);
 
   const handleLogin = (user) => {
-    setCurrentUser(user); // Set the current user when they log in
+    setCurrentUser(user);
   };
 
   const handleLogout = () => {
-    setCurrentUser(null); // Clear the current user
+    setCurrentUser(null);
   };
 
   return (
     <div>
-      {location.pathname !== '/' && <Header />} {/* Conditionally render Header */}
+      {location.pathname !== '/' && <Header />}
       <Routes>
         <Route path="/" element={<SplashPage handleLogin={handleLogin} />} />
         <Route path="/home" element={<Home />} />
